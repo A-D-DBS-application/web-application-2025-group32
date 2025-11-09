@@ -2,75 +2,74 @@
 <head>
 <meta charset="UTF-8">
 <title>Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
     body {
-        background-color: #eef0f7;
+        margin: 0;
+        font-family: 'Poppins', sans-serif;
+        background: #eef0f5;
         display: flex;
         justify-content: center;
         align-items: center;
         height: 100vh;
-        margin: 0;
-        font-family: Arial, sans-serif;
     }
 
-    .login-box {
-        background-color: #00c4d6;
-        width: 300px;
-        padding: 50px 20px;
+    .login-container {
+        background: #00c6d7;
+        padding: 40px;
+        border-radius: 15px;
+        width: 330px;
         text-align: center;
-        border-radius: 5px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        animation: fadeIn 0.4s ease-in-out;
     }
 
-    .login-box h2 {
-        color: #fff;
-        margin-bottom: 20px;
-        font-size: 14px;
+    h2 {
+        color: white;
+        font-size: 22px;
+        margin-bottom: 25px;
+        font-weight: 600;
         letter-spacing: 1px;
     }
 
-    input[type="text"] {
-        width: 80%;
-        padding: 8px;
+    input {
+        width: 100%;
+        padding: 12px;
+        border-radius: 8px;
         border: none;
-        border-radius: 4px;
         margin-bottom: 15px;
+        font-size: 15px;
     }
 
     button {
-        background: #325dff;
+        width: 100%;
+        padding: 12px;
+        background: #2f57ff;
         color: white;
-        padding: 8px 20px;
         border: none;
-        border-radius: 4px;
-        font-size: 12px;
+        border-radius: 8px;
         cursor: pointer;
-        letter-spacing: 0.5px;
+        font-size: 15px;
+        font-weight: 600;
+        transition: 0.2s;
     }
 
     button:hover {
-        opacity: 0.9;
+        background: #2648d9;
     }
 
-    label {
-        font-size: 10px;
-        color: #fff;
-        display: block;
-        margin-bottom: 5px;
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 </style>
 </head>
+
 <body>
-
-<div class="login-box">
+<form method="POST" class="login-container">
     <h2>LOGIN</h2>
-
-    <form method="POST">
-        <label>USER ID</label>
-        <input type="text" name="user_id" required>
-        <br>
-        <button type="submit">AANMELDEN</button>
-    </form>
-</div>
-
+    <input type="text" name="user_id" placeholder="User ID" required>
+    <button type="submit">AANMELDEN</button>
+</form>
 </body>
 </html>
