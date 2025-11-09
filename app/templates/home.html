@@ -1,0 +1,75 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Home</title>
+<style>
+    body {
+        background-color: #eef0f7;
+        margin: 0;
+        font-family: Arial, sans-serif;
+    }
+
+    .header {
+        background-color: #00c4d6;
+        padding: 15px;
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    .container {
+        display: flex;
+        height: calc(100vh - 50px);
+    }
+
+    .sidebar {
+        width: 200px;
+        background-color: #00c4d6;
+        padding: 20px 10px;
+    }
+
+    .btn {
+        background: #fff;
+        border: none;
+        padding: 15px;
+        width: 100%;
+        margin-bottom: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        border-radius: 3px;
+        text-align: center;
+    }
+
+    .btn:hover {
+        opacity: 0.8;
+    }
+
+    .content {
+        flex: 1;
+        background-color: #eef0f7;
+        padding: 20px;
+    }
+</style>
+</head>
+<body>
+
+<div class="header">
+    Welkom, {{ user }}
+</div>
+
+<div class="container">
+    <div class="sidebar">
+        <button class="btn">Nieuwe reservatie</button>
+        <button class="btn">Feedback</button>
+        <button class="btn">Mijn reservaties</button>
+        <a href="{{ url_for('logout') }}">
+            <button class="btn">Afmelden</button>
+        </a>
+    </div>
+
+    <div class="content">
+        <!-- Page content placeholder -->
+    </div>
+</div>
+
+</body>
+</html>
