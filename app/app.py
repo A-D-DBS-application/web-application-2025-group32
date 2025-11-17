@@ -1,17 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, User, Building, Desk, Reservation
-from routes import main
+from flask import render_template, request, redirect, url_for, session, flash
 
-app = Flask(__name__)
-app.secret_key = "mysecretkey"
+# Use application factory from package
+from app import create_app
 
-# Database configuratie
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:groep32mvp1@db.knxcqgoealvgfqcuffep.supabase.co:5432/postgres'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)
+app = create_app()
 
-# Register blueprint
-app.register_blueprint(main)
+# Import db for create_all on startup
+try:
+    from app.models import db
+except Exception:
+    from models import db
+
 
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -31,9 +30,15 @@ def home():
     except Exception:
         user_id = None
 
+    # try to load the user record from the DB (models available via package)
     user_obj = None
-    if user_id is not None:
-        user_obj = User.query.filter_by(user_id=user_id).first()
+    try:
+        from app.models import User
+        if user_id is not None:
+            user_obj = User.query.filter_by(user_id=user_id).first()
+    except Exception:
+        # models not available or DB not configured — fall back to session value
+        user_obj = None
 
     # Als we geen user record vinden, val terug op de raw session waarde
     if not user_obj:
@@ -48,7 +53,22 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
+
+@app.route('/db_test')
+def db_test():
+    """Simple DB connection test: returns ok or error."""
+    try:
+        with app.app_context():
+            # simple query
+            db.session.execute('SELECT 1')
+        return "DB OK"
+    except Exception as e:
+        return f"DB Error: {e}", 500
+
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()  # Maak alle tabellen aan als ze niet bestaan
+        try:
+            db.create_all()  # Maak alle tabellen aan als ze niet bestaan
+        except Exception as e:
+            print(f"Warning: could not create tables: {e}")
     app.run(debug=True)

@@ -1,63 +1,106 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Home</title>
 <style>
+    :root {
+        --primary: #0bbdca;
+        --primary-dark: #089aa4;
+        --bg: #f4f6fa;
+        --card-bg: #ffffff;
+        --text: #2c3137;
+        --radius: 16px;
+        --shadow: 0 6px 20px rgba(0,0,0,0.10);
+    }
+
     body {
-        background-color: #eef0f7;
         margin: 0;
-        font-family: Arial, sans-serif;
+        font-family: "Inter", Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
     }
 
+    /* HEADER */
     .header {
-        background-color: #00c4d6;
-        padding: 30px;
-        font-weight: bold;
-        font-size: 36px;
+        background: var(--primary);
+        padding: 45px 40px;
+        font-weight: 700;
+        font-size: 42px;
+        color: white;
+        border-bottom-left-radius: 25px;
+        border-bottom-right-radius: 25px;
+        box-shadow: var(--shadow);
     }
 
+    /* MAIN LAYOUT */
     .container {
         display: flex;
-        height: calc(100vh - 70px);
+        padding: 30px;
+        gap: 30px;
+        height: calc(100vh - 160px);
     }
 
+    /* SIDEBAR */
     .sidebar {
-        width: 260px;
-        background-color: #00c4d6;
-        padding: 25px 15px;
+        width: 270px;
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        padding: 25px 20px;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
     }
 
+    .sidebar-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: var(--primary-dark);
+        letter-spacing: .5px;
+    }
+
+    /* BUTTONS */
     .btn {
-        background: #fff;
+        background: var(--primary);
         border: none;
-        padding: 20px;
+        padding: 16px;
         width: 100%;
-        margin-bottom: 15px;
-        font-size:20px;
-        font-weight: bold;
+        font-size: 18px;
+        font-weight: 600;
         cursor: pointer;
-        border-radius: 3px;
+        border-radius: var(--radius);
         text-align: center;
-        text-decoration: none;
-        display: block;
+        color: white;
+        transition: 0.2s ease;
     }
 
     .btn:hover {
-        opacity: 0.8;
+        background: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
     }
 
+    /* CONTENT */
     .content {
         flex: 1;
-        background-color: #eef0f7;
-        padding: 30px;
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        padding: 35px;
+        box-shadow: var(--shadow);
+        overflow-y: auto;
     }
 
+    /* FLASH MESSAGE */
     .message {
-        background-color: #d4edda;
-        color: #155724;
-        padding: 15px;
-        border-radius: 4px;
-        margin-bottom: 20px;
+        background: #dbf7e6;
+        color: #0d6b41;
+        padding: 18px;
+        border-radius: var(--radius);
+        margin-bottom: 22px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        font-size: 17px;
     }
 </style>
 </head>
@@ -69,14 +112,11 @@
 
 <div class="container">
     <div class="sidebar">
-        <a href="{{ url_for('main.reserve') }}" style="text-decoration: none;">
-            <button class="btn">Nieuwe reservatie</button>
-        </a>
+        <div class="sidebar-title">Menu</div>
+        <a href="{{ url_for('main.reserve') }}" style="text-decoration: none;"><button class="btn">Nieuwe reservatie</button></a>
         <button class="btn">Feedback</button>
-        <button class="btn">Mijn reservaties</button>
-        <a href="{{ url_for('logout') }}" style="text-decoration: none;">
-            <button class="btn">Afmelden</button>
-        </a>
+        <a href="{{ url_for('main.mijn_reservaties') }}" style="text-decoration: none;"><button class="btn">Mijn reservaties</button></a>
+        <a href="{{ url_for('logout') }}" style="text-decoration: none;"><button class="btn">Afmelden</button></a>
     </div>
 
     <div class="content">

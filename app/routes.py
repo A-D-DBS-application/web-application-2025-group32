@@ -1,7 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from models import db, User, Building, Desk, Reservation
+try:
+    from app.models import db, User, Building, Desk, Reservation
+except Exception:
+    from models import db, User, Building, Desk, Reservation
 from datetime import datetime
-from sqlalchemy import and_
+from sqlalchemy import and_, text
 
 main = Blueprint("main", __name__)
 
@@ -10,9 +13,28 @@ def get_current_user():
     """Helper: haal user-object op van session"""
     if "user" not in session:
         return None
-    user_id = int(session["user"])
-    user = User.query.filter_by(user_id=user_id).first()
-    return user
+
+    raw = session["user"]
+    # Try to interpret session value as integer user_id first
+    try:
+        user_id = int(raw)
+        user = User.query.filter_by(user_id=user_id).first()
+        if user:
+            return user
+    except Exception:
+        # not an int - continue to try other lookups
+        pass
+
+    # Try to find by username or email (some sessions store a string username)
+    try:
+        user = User.query.filter((User.user_name == raw) | (User.user_email == raw)).first()
+        if user:
+            return user
+    except Exception:
+        # If the DB or model isn't available, return None
+        return None
+
+    return None
 
 
 @main.route("/reserve", methods=["GET", "POST"])
@@ -24,11 +46,13 @@ def reserve():
     - Begintijd en eindtijd input
     """
     user = get_current_user()
-    if not user:
-        flash("Gelieve eerst aan te melden.")
-        return redirect(url_for("login"))
-
-    buildings = Building.query.all()
+    # Allow anonymous users to view the reservation form (GET). Only require
+    # login for actions that create reservations (POST).
+    buildings = []
+    try:
+        buildings = Building.query.all()
+    except Exception:
+        buildings = []
     floors = [0, 1, 2]
 
     # Behoud ingevoerde waarden voor aanpassingen
@@ -51,6 +75,13 @@ def reserve():
         if not date_str or not start_time_str or not end_time_str:
             flash("Vul alstublieft datum en tijden in.")
             return redirect(url_for("main.reserve"))
+
+        # If the user is not logged in, redirect them to login before
+        # proceeding to choose/confirm a desk.
+        if not user:
+            flash("Gelieve eerst aan te melden om een reservatie te maken.")
+            # preserve the chosen filters as query params so we can continue
+            return redirect(url_for("login", next=url_for("main.available", building_id=building_id or "", floor=floor or "", date=date_str, start_time=start_time_str, end_time=end_time_str)))
 
         # Ga naar beschikbare bureaus
         return redirect(url_for("main.available",
@@ -75,9 +106,7 @@ def available():
     - Toon alleen bureaus zonder overlappende reservatie
     """
     user = get_current_user()
-    if not user:
-        flash("Gelieve eerst aan te melden.")
-        return redirect(url_for("login"))
+    # Allow anonymous view of available desks; booking requires login later.
 
     # Haal parameters op (building_id bevat nu de building.adress, bv 'A' of 'B')
     building_adress = request.args.get("building_id")
@@ -142,11 +171,17 @@ def available():
         "end_time": end_str,
     }
 
+    # Safe get for buildings list
+    try:
+        all_buildings = Building.query.all()
+    except Exception:
+        all_buildings = []
+
     return render_template("available.html",
                            user=user,
                            desks=available_desks,
                            saved=saved,
-                           buildings=Building.query.all())
+                           buildings=all_buildings)
 
 
 @main.route("/reserve/desk/<int:desk_id>", methods=["GET", "POST"])
@@ -158,9 +193,7 @@ def desk_detail(desk_id):
     - Bevestig reservatie of annuleer
     """
     user = get_current_user()
-    if not user:
-        flash("Gelieve eerst aan te melden.")
-        return redirect(url_for("login"))
+    # Allow viewing desk details without login; require login for confirmation.
 
     desk = Desk.query.filter_by(desk_id=desk_id).first()
     if not desk:
@@ -176,6 +209,11 @@ def desk_detail(desk_id):
         action = request.form.get("action")
 
         if action == "confirm":
+            # Require logged in user for creating a reservation
+            if not user:
+                flash("Gelieve eerst aan te melden om een reservatie te maken.")
+                return redirect(url_for("login"))
+
             # Maak reservatie aan
             try:
                 chosen_date = datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -186,6 +224,13 @@ def desk_detail(desk_id):
                 end_datetime = datetime.combine(chosen_date, end_time_obj)
 
                 # Double-check: is bureau niet ondertussen al geboekt?
+                # Acquire a row-level lock on the desk to reduce race conditions
+                try:
+                    db.session.execute(text("SELECT 1 FROM desk WHERE desk_id = :id FOR UPDATE"), {"id": desk.desk_id})
+                except Exception:
+                    # If locking fails (DB that doesn't support FOR UPDATE, or other issue), continue to check normally
+                    pass
+
                 overlapping = Reservation.query.filter(
                     Reservation.desk_id == desk.desk_id,
                     Reservation.starttijd < end_datetime,
@@ -210,7 +255,7 @@ def desk_detail(desk_id):
 
                 flash("Je reservatie is succesvol toegevoegd!")
                 return redirect(url_for("home"))
-
+            
             except Exception as e:
                 flash(f"Fout bij reservatie: {str(e)}")
                 return redirect(url_for("main.available",
@@ -227,3 +272,74 @@ def desk_detail(desk_id):
                            date=date_str,
                            start_time=start_str,
                            end_time=end_str)
+
+
+@main.route('/mijn_reservaties')
+def mijn_reservaties():
+    """
+    Toon alle reservaties van de ingelogde gebruiker.
+    """
+    user = get_current_user()
+    if not user:
+        flash("Gelieve eerst aan te melden om je reservaties te zien.")
+        return redirect(url_for('login', next=url_for('main.mijn_reservaties')))
+
+    try:
+        reservations = Reservation.query.filter_by(user_id=user.user_id).order_by(Reservation.starttijd.desc()).all()
+    except Exception:
+        reservations = []
+
+    # Build a lightweight view model to pass to the template
+    rows = []
+    for r in reservations:
+        desk = None
+        building = None
+        try:
+            desk = r.desk
+            building = desk.building if desk else None
+        except Exception:
+            desk = None
+            building = None
+
+        rows.append({
+            'res_id': r.res_id,
+            'desk_number': getattr(desk, 'desk_number', None),
+            'building_adress': getattr(building, 'adress', None),
+            'starttijd': r.starttijd,
+            'eindtijd': r.eindtijd,
+        })
+
+    return render_template('mijn_reservaties.html', user=user, reservations=rows)
+
+
+@main.route('/mijn_reservaties/cancel/<int:res_id>', methods=['POST'])
+def cancel_reservation(res_id):
+    """Allow the current user to cancel their reservation."""
+    user = get_current_user()
+    if not user:
+        flash("Gelieve eerst aan te melden om reservaties te beheren.")
+        return redirect(url_for('login', next=url_for('main.mijn_reservaties')))
+
+    try:
+        reservation = Reservation.query.filter_by(res_id=res_id).first()
+    except Exception:
+        reservation = None
+
+    if not reservation:
+        flash("Reservatie niet gevonden.")
+        return redirect(url_for('main.mijn_reservaties'))
+
+    # Only allow the owner to cancel
+    if reservation.user_id != user.user_id:
+        flash("Je kunt alleen je eigen reservaties annuleren.")
+        return redirect(url_for('main.mijn_reservaties'))
+
+    try:
+        db.session.delete(reservation)
+        db.session.commit()
+        flash("Reservatie geannuleerd.")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Kon reservatie niet annuleren: {str(e)}")
+
+    return redirect(url_for('main.mijn_reservaties'))
