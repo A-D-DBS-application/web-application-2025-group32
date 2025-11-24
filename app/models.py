@@ -14,13 +14,17 @@ class User(db.Model):
     user_afdeling = db.Column(db.String(200))
     user_email = db.Column(db.String(200))
     dienst_id = db.Column(db.Integer)
-    role = db.Column(db.String(50))
+    role = db.Column(db.String(50), default='user')
     
     # Relaties
     reservations = db.relationship("Reservation", back_populates="user", lazy="dynamic")
 
     def __repr__(self):
         return f"<User {self.user_id}>"
+
+    def is_admin(self):
+        """Check of gebruiker admin is"""
+        return self.role == 'admin'
 
 
 class Building(db.Model):
