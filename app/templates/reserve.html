@@ -1,124 +1,54 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-    <meta charset="UTF-8">
-    <title>Nieuwe Reservatie</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #eef0f7;
-            padding: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #00c4d6;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            margin-bottom: 25px;
-        }
-        label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 8px;
-            color: #333;
-        }
-        select, input[type="date"], input[type="time"], input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-        .time-row {
-            display: flex;
-            gap: 20px;
-        }
-        .time-row .form-group {
-            flex: 1;
-        }
-        .button-group {
-            display: flex;
-            justify-content: center;
-            margin-top: 35px;
-        }
-        button {
-            padding: 12px 30px;
-            font-size: 16px;
-            font-weight: bold;
-            border: none;
-            border-radius: 4px;
-            background-color: #00c4d6;
-            color: white;
-            cursor: pointer;
-            min-width: 200px;
-        }
-        button:hover {
-            background-color: #00a8b8;
-        }
-        .back-link {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .back-link a {
-            color: #00c4d6;
-            text-decoration: none;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="back-link">
-            <a href="{{ url_for('home') }}">← Terug naar home</a>
+{% extends 'base.html' %}
+
+{% block title %}Nieuwe Reservatie - Colruyt{% endblock %}
+
+{% block hero %}
+  <h1 style="margin:0;font-size:2.2rem">Nieuwe Reservatie</h1>
+  <p style="margin:8px 0 0 0;opacity:0.95">Zoek een beschikbaar bureau</p>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;margin:0 auto">
+  <div class="card">
+    <form method="POST">
+      <div style="display:grid;gap:20px">
+        <div>
+          <label class="small">Gebouw</label>
+          <select name="building_id" required>
+            <option value="">-- Selecteer een gebouw --</option>
+            {% for building in buildings %}
+              <option value="{{ building.adress }}" {% if saved.building_id|string == building.adress|string %}selected{% endif %}>{{ building.adress }}</option>
+            {% endfor %}
+          </select>
         </div>
-        <h1>Nieuwe Reservatie</h1>
-        <form method="POST">
-            <div class="form-group">
-                <label for="building_id">Gebouw</label>
-                <select name="building_id" id="building_id">
-                    <option value="">-- Selecteer een gebouw --</option>
-                    {% for building in buildings %}
-                        <option value="{{ building.adress }}" {% if saved.building_id|string == building.adress|string %}selected{% endif %}>{{ building.adress }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="floor">Verdieping</label>
-                <select name="floor" id="floor">
-                    <option value="">-- Selecteer verdieping --</option>
-                    {% for f in floors %}
-                        <option value="{{ f }}" {% if saved.floor|string == f|string %}selected{% endif %}>Verdieping {{ f }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="date">Datum</label>
-                <input type="date" name="date" id="date" value="{{ saved.date }}" required>
-            </div>
-            <div class="time-row">
-                <div class="form-group">
-                    <label for="start_time">Begintijd (HH:MM)</label>
-                    <input type="time" name="start_time" id="start_time" value="{{ saved.start_time }}" required>
-                </div>
-                <div class="form-group">
-                    <label for="end_time">Eindtijd (HH:MM)</label>
-                    <input type="time" name="end_time" id="end_time" value="{{ saved.end_time }}" required>
-                </div>
-            </div>
-            <div class="button-group">
-                <button type="submit">Beschikbare bureaus weergeven</button>
-            </div>
-        </form>
-    </div>
-</body>
-</html>
+        <div>
+          <label class="small">Verdieping</label>
+          <select name="floor" required>
+            <option value="">-- Selecteer verdieping --</option>
+            {% for f in floors %}
+              <option value="{{ f }}" {% if saved.floor|string == f|string %}selected{% endif %}>Verdieping {{ f }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="small">Datum</label>
+          <input type="date" name="date" value="{{ saved.date }}" required />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <label class="small">Begintijd</label>
+            <input type="time" name="start_time" value="{{ saved.start_time }}" required />
+          </div>
+          <div>
+            <label class="small">Eindtijd</label>
+            <input type="time" name="end_time" value="{{ saved.end_time }}" required />
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:8px">
+          <button class="btn" type="submit" style="min-width:280px">Beschikbare bureaus tonen</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

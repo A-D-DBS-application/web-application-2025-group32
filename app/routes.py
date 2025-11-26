@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 try:
-    from app.models import db, User, Building, Desk, Reservation
+    from app.models import db, User, Building, Desk, Reservation, Feedback
 except Exception:
-    from models import db, User, Building, Desk, Reservation
+    from models import db, User, Building, Desk, Reservation, Feedback
 from datetime import datetime
 from sqlalchemy import and_, text
 
@@ -343,3 +343,86 @@ def cancel_reservation(res_id):
         flash(f"Kon reservatie niet annuleren: {str(e)}")
 
     return redirect(url_for('main.mijn_reservaties'))
+
+
+@main.route('/feedback/<int:res_id>', methods=['GET', 'POST'])
+def feedback(res_id):
+    """
+    Feedback formulier voor een voltooide reservatie.
+    """
+    user = get_current_user()
+    if not user:
+        flash("Gelieve eerst aan te melden om feedback te geven.")
+        return redirect(url_for('login', next=url_for('main.feedback', res_id=res_id)))
+
+    # Haal reservatie op
+    try:
+        reservation = Reservation.query.filter_by(res_id=res_id).first()
+    except Exception:
+        reservation = None
+
+    if not reservation:
+        flash("Reservatie niet gevonden.")
+        return redirect(url_for('home'))
+
+    # Controleer of de gebruiker de eigenaar is
+    if reservation.user_id != user.user_id:
+        flash("Je kunt alleen feedback geven voor je eigen reservaties.")
+        return redirect(url_for('home'))
+
+    # Controleer of de reservatie is voltooid
+    if reservation.eindtijd > datetime.now():
+        flash("Je kunt alleen feedback geven na voltooiing van de reservatie.")
+        return redirect(url_for('home'))
+
+    # Controleer of er al feedback is gegeven
+    existing_feedback = Feedback.query.filter_by(reservation_id=res_id).first()
+
+    if request.method == 'POST':
+        try:
+            netheid = int(request.form.get('netheid_score', 0))
+            wifi = int(request.form.get('wifi_score', 0))
+            ruimte = int(request.form.get('ruimte_score', 0))
+            stilte = int(request.form.get('stilte_score', 0))
+            algemeen = int(request.form.get('algemene_score', 0))
+            opmerkingen = request.form.get('extra_opmerkingen', '').strip()
+
+            # Validatie (1-5 sterren)
+            if not all(1 <= score <= 5 for score in [netheid, wifi, ruimte, stilte, algemeen]):
+                flash("Alle scores moeten tussen 1 en 5 liggen.")
+                return redirect(url_for('main.feedback', res_id=res_id))
+
+            if existing_feedback:
+                # Update bestaande feedback
+                existing_feedback.netheid_score = netheid
+                existing_feedback.wifi_score = wifi
+                existing_feedback.ruimte_score = ruimte
+                existing_feedback.stilte_score = stilte
+                existing_feedback.algemene_score = algemeen
+                existing_feedback.extra_opmerkingen = opmerkingen
+            else:
+                # Nieuwe feedback
+                feedback_obj = Feedback(
+                    reservation_id=res_id,
+                    netheid_score=netheid,
+                    wifi_score=wifi,
+                    ruimte_score=ruimte,
+                    stilte_score=stilte,
+                    algemene_score=algemeen,
+                    extra_opmerkingen=opmerkingen
+                )
+                db.session.add(feedback_obj)
+
+            db.session.commit()
+            flash("Bedankt voor je feedback!")
+            return redirect(url_for('home'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Fout bij opslaan feedback: {str(e)}")
+            return redirect(url_for('main.feedback', res_id=res_id))
+
+    return render_template('feedback.html', 
+                         user=user, 
+                         reservation=reservation,
+                         existing_feedback=existing_feedback)

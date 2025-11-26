@@ -33,7 +33,8 @@ def home():
     # try to load the user record from the DB (models available via package)
     user_obj = None
     try:
-        from app.models import User
+        from app.models import User, Reservation
+        from datetime import datetime, timedelta
         if user_id is not None:
             user_obj = User.query.filter_by(user_id=user_id).first()
     except Exception:
@@ -46,7 +47,45 @@ def home():
     else:
         display = f"{user_obj.user_name} {user_obj.user_last_name}"
 
-    return render_template("home.html", user=display)
+    # Haal aankomende reservaties op (komende week)
+    upcoming = []
+    completed = []
+    try:
+        from app.models import Reservation, Feedback
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        week_later = now + timedelta(days=7)
+        
+        # Aankomende reservaties
+        upcoming = Reservation.query.filter(
+            Reservation.user_id == user_id,
+            Reservation.starttijd >= now,
+            Reservation.starttijd <= week_later
+        ).order_by(Reservation.starttijd).all()
+        
+        # Voltooide reservaties (laatste 30 dagen)
+        month_ago = now - timedelta(days=30)
+        completed = Reservation.query.filter(
+            Reservation.user_id == user_id,
+            Reservation.eindtijd < now,
+            Reservation.eindtijd >= month_ago
+        ).order_by(Reservation.eindtijd.desc()).all()
+        
+        # Voeg gebouw en bureau info toe aan elke reservatie
+        for res in upcoming + completed:
+            if res.desk and res.desk.building:
+                res.building_adress = res.desk.building.adress
+                res.desk_number = res.desk.desk_number
+            else:
+                res.building_adress = 'N/A'
+                res.desk_number = 'N/A'
+            # Check if feedback exists
+            res.has_feedback = Feedback.query.filter_by(reservation_id=res.res_id).first() is not None
+    except Exception:
+        upcoming = []
+        completed = []
+
+    return render_template("home.html", user=display, user_display=display, upcoming=upcoming, completed=completed)
 
 @app.route("/logout")
 def logout():

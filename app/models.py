@@ -75,6 +75,28 @@ class Reservation(db.Model):
     # Relaties
     user = db.relationship("User", back_populates="reservations")
     desk = db.relationship("Desk", back_populates="reservations")
+    feedback = db.relationship("Feedback", back_populates="reservation", uselist=False)
 
     def __repr__(self):
         return f"<Reservation {self.user_id} - {self.desk_id}>"
+
+
+class Feedback(db.Model):
+    """
+    Feedback model - vertegenwoordigt feedback voor een reservatie
+    """
+    __tablename__ = "Feedback"
+    feedback_id = db.Column(db.Integer, primary_key=True)
+    reservation_id = db.Column(db.Integer, db.ForeignKey("reservation.res_id"), nullable=False)
+    netheid_score = db.Column(db.SmallInteger)  # Netheid score (1-5)
+    wifi_score = db.Column(db.SmallInteger)  # Wifi score (1-5)
+    ruimte_score = db.Column(db.SmallInteger)  # Ruimte score (1-5)
+    stilte_score = db.Column(db.SmallInteger)  # Stilte score (1-5)
+    algemene_score = db.Column(db.SmallInteger)  # Algemene score (1-5)
+    extra_opmerkingen = db.Column(db.Text)  # Extra opmerkingen
+    
+    # Relatie
+    reservation = db.relationship("Reservation", back_populates="feedback")
+
+    def __repr__(self):
+        return f"<Feedback {self.feedback_id}>"

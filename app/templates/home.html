@@ -1,134 +1,91 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Home</title>
-<style>
-    :root {
-        --primary: #0bbdca;
-        --primary-dark: #089aa4;
-        --bg: #f4f6fa;
-        --card-bg: #ffffff;
-        --text: #2c3137;
-        --radius: 16px;
-        --shadow: 0 6px 20px rgba(0,0,0,0.10);
-    }
+{% extends 'base.html' %}
 
-    body {
-        margin: 0;
-        font-family: "Inter", Arial, sans-serif;
-        background: var(--bg);
-        color: var(--text);
-    }
+{% block title %}Home - Colruyt Reservaties{% endblock %}
 
-    /* HEADER */
-    .header {
-        background: var(--primary);
-        padding: 45px 40px;
-        font-weight: 700;
-        font-size: 42px;
-        color: white;
-        border-bottom-left-radius: 25px;
-        border-bottom-right-radius: 25px;
-        box-shadow: var(--shadow);
-    }
+{% block hero %}
+  <h1 style="margin:0;font-size:2.2rem">Welkom, {{ user_display or user }}</h1>
+  <p style="margin:8px 0 0 0;opacity:0.95;font-size:1.05rem">Beheer je bureau reservaties</p>
+{% endblock %}
 
-    /* MAIN LAYOUT */
-    .container {
-        display: flex;
-        padding: 30px;
-        gap: 30px;
-        height: calc(100vh - 160px);
-    }
+{% block content %}
+<div style="display:flex;gap:28px;margin-top:0">
+  <aside style="width:280px;flex-shrink:0">
+    <div class="card">
+      <h3 style="margin:0 0 18px 0;color:var(--primary);font-size:1.15rem">Snelle acties</h3>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <a class="btn" href="{{ url_for('main.reserve') }}">Nieuwe reservatie</a>
+        <a class="btn btn-secondary" href="{{ url_for('main.mijn_reservaties') }}">Mijn reservaties</a>
+      </div>
+    </div>
+  </aside>
 
-    /* SIDEBAR */
-    .sidebar {
-        width: 270px;
-        background: var(--card-bg);
-        border-radius: var(--radius);
-        padding: 25px 20px;
-        box-shadow: var(--shadow);
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-    }
-
-    .sidebar-title {
-        font-size: 20px;
-        font-weight: 600;
-        margin-bottom: 10px;
-        color: var(--primary-dark);
-        letter-spacing: .5px;
-    }
-
-    /* BUTTONS */
-    .btn {
-        background: var(--primary);
-        border: none;
-        padding: 16px;
-        width: 100%;
-        font-size: 18px;
-        font-weight: 600;
-        cursor: pointer;
-        border-radius: var(--radius);
-        text-align: center;
-        color: white;
-        transition: 0.2s ease;
-    }
-
-    .btn:hover {
-        background: var(--primary-dark);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow);
-    }
-
-    /* CONTENT */
-    .content {
-        flex: 1;
-        background: var(--card-bg);
-        border-radius: var(--radius);
-        padding: 35px;
-        box-shadow: var(--shadow);
-        overflow-y: auto;
-    }
-
-    /* FLASH MESSAGE */
-    .message {
-        background: #dbf7e6;
-        color: #0d6b41;
-        padding: 18px;
-        border-radius: var(--radius);
-        margin-bottom: 22px;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-        font-size: 17px;
-    }
-</style>
-</head>
-<body>
-
-<div class="header">
-    Welkom, {{ user }}
-</div>
-
-<div class="container">
-    <div class="sidebar">
-        <div class="sidebar-title">Menu</div>
-        <a href="{{ url_for('main.reserve') }}" style="text-decoration: none;"><button class="btn">Nieuwe reservatie</button></a>
-        <button class="btn">Feedback</button>
-        <a href="{{ url_for('main.mijn_reservaties') }}" style="text-decoration: none;"><button class="btn">Mijn reservaties</button></a>
-        <a href="{{ url_for('logout') }}" style="text-decoration: none;"><button class="btn">Afmelden</button></a>
+  <div style="flex:1">
+    <div class="card" style="margin-bottom:28px">
+      <h2 style="margin:0 0 6px 0;color:var(--primary)">Aankomende reservaties</h2>
+      <p class="small" style="margin-bottom:20px;color:var(--muted)">Je reservaties voor de komende week</p>
+      {% if upcoming and upcoming|length > 0 %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th>Tijd</th>
+            <th>Bureau</th>
+            <th>Gebouw</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in upcoming %}
+          <tr>
+            <td>{{ r.starttijd.strftime('%d/%m/%Y') if r.starttijd else '-' }}</td>
+            <td>{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }} - {{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
+            <td>Bureau {{ r.desk_number or 'N/A' }}</td>
+            <td>{{ r.building_adress or 'N/A' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="padding:40px;text-align:center;color:var(--muted)">
+        <p>Geen aankomende reservaties.</p>
+        <a class="btn" href="{{ url_for('main.reserve') }}" style="margin-top:16px;display:inline-block">Maak een reservatie</a>
+      </div>
+      {% endif %}
     </div>
 
-    <div class="content">
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="message">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+    {% if completed and completed|length > 0 %}
+    <div class="card">
+      <h2 style="margin:0 0 6px 0;color:var(--primary)">Voltooide reservaties</h2>
+      <p class="small" style="margin-bottom:20px;color:var(--muted)">Geef feedback over je ervaring</p>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th>Tijd</th>
+            <th>Bureau</th>
+            <th>Gebouw</th>
+            <th>Feedback</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in completed %}
+          <tr>
+            <td>{{ r.starttijd.strftime('%d/%m/%Y') if r.starttijd else '-' }}</td>
+            <td>{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }} - {{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
+            <td>Bureau {{ r.desk_number or 'N/A' }}</td>
+            <td>{{ r.building_adress or 'N/A' }}</td>
+            <td>
+              {% if r.has_feedback %}
+                <span style="color:var(--success);font-size:0.9rem">✓ Gegeven</span>
+              {% else %}
+                <a class="btn" href="{{ url_for('main.feedback', res_id=r.res_id) }}" style="padding:6px 12px;font-size:0.85rem">Geef feedback</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+    {% endif %}
+  </div>
 </div>
-
-</body>
-</html>
+{% endblock %}

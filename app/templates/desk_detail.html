@@ -1,60 +1,45 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-    <meta charset="UTF-8">
-    <title>Reservatie Bevestigen</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background-color: #eef0f7; }
-        .header { background-color: #00c4d6; color: white; padding: 20px; text-align: center; }
-        .container { max-width: 600px; margin: 40px auto; padding: 20px; }
-        .confirmation-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .confirmation-card h2 { color: #00c4d6; margin-bottom: 20px; }
-        .info-block { margin-bottom: 20px; }
-        .info-block label { display: block; font-weight: bold; color: #333; margin-bottom: 5px; }
-        .info-block p { color: #666; font-size: 16px; }
-        .buttons { display: flex; gap: 10px; margin-top: 30px; justify-content: space-between; }
-        .btn { flex: 1; padding: 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        .btn-confirm { background-color: #28a745; color: white; }
-        .btn-confirm:hover { background-color: #218838; }
-        .btn-cancel { background-color: #dc3545; color: white; }
-        .btn-cancel:hover { background-color: #c82333; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Reservatie Bevestigen</h1>
+{% extends 'base.html' %}
+
+{% block title %}Reservatie Bevestigen - Colruyt{% endblock %}
+
+{% block hero %}
+  <h1 style="margin:0;font-size:2.2rem">Reservatie Bevestigen</h1>
+  <p style="margin:8px 0 0 0;opacity:0.95">Controleer de details</p>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:600px;margin:0 auto">
+  <div class="card">
+    <h2 style="margin:0 0 24px 0;color:var(--primary)">Reservatie Details</h2>
+    <div style="display:grid;gap:18px">
+      <div>
+        <label class="small" style="color:var(--muted)">Bureau</label>
+        <p style="font-size:1.1rem;margin:4px 0">Bureau {{ desk.desk_number }}</p>
+      </div>
+      <div>
+        <label class="small" style="color:var(--muted)">Gebouw</label>
+        <p style="font-size:1.1rem;margin:4px 0">{{ desk.building.adress }}</p>
+      </div>
+      <div>
+        <label class="small" style="color:var(--muted)">Afdeling</label>
+        <p style="font-size:1.1rem;margin:4px 0">{{ desk.dienst_id }}</p>
+      </div>
+      <div>
+        <label class="small" style="color:var(--muted)">Datum</label>
+        <p style="font-size:1.1rem;margin:4px 0">{{ date }}</p>
+      </div>
+      <div>
+        <label class="small" style="color:var(--muted)">Tijd</label>
+        <p style="font-size:1.1rem;margin:4px 0">{{ start_time }} - {{ end_time }}</p>
+      </div>
     </div>
-    <div class="container">
-        <div class="confirmation-card">
-            <h2>Controleer uw reservatie</h2>
-            <div class="info-block">
-                <label>Bureau</label>
-                <p>Bureau {{ desk.desk_number }}</p>
-            </div>
-            <div class="info-block">
-                <label>Gebouw</label>
-                <p>Gebouw {{ desk.building.adress }}</p>
-            </div>
-            <div class="info-block">
-                <label>Afdeling</label>
-                <p>{{ desk.dienst_id }}</p>
-            </div>
-            <div class="info-block">
-                <label>Datum</label>
-                <p>{{ date }}</p>
-            </div>
-            <div class="info-block">
-                <label>Tijd</label>
-                <p>{{ start_time }} tot {{ end_time }}</p>
-            </div>
-            <form method="POST">
-                <div class="buttons">
-                    <button type="submit" name="action" value="confirm" class="btn btn-confirm">✔ Bevestig Reservatie</button>
-                    <button type="submit" name="action" value="cancel" class="btn btn-cancel">✕ Annuleren</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</body>
-</html>
+
+    <form method="POST" style="margin-top:32px">
+      <div style="display:flex;gap:12px">
+        <button type="submit" name="action" value="confirm" class="btn" style="flex:1">Bevestig Reservatie</button>
+        <button type="submit" name="action" value="cancel" class="btn-secondary" style="flex:1">Annuleren</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

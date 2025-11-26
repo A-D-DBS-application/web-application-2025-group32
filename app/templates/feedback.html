@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}Feedback - Colruyt{% endblock %}
+
+{% block hero %}
+  <h1 style="margin:0;font-size:2.2rem">Feedback Geven</h1>
+  <p style="margin:8px 0 0 0;opacity:0.95">Hoe was je ervaring met dit bureau?</p>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;margin:0 auto">
+  <div class="card" style="margin-bottom:24px">
+    <h3 style="margin:0 0 12px 0;color:var(--primary)">Reservatie Details</h3>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;font-size:0.95rem">
+      <div>
+        <span style="color:var(--muted)">Bureau:</span>
+        <strong>Bureau {{ reservation.desk.desk_number }}</strong>
+      </div>
+      <div>
+        <span style="color:var(--muted)">Gebouw:</span>
+        <strong>{{ reservation.desk.building.adress }}</strong>
+      </div>
+      <div>
+        <span style="color:var(--muted)">Datum:</span>
+        <strong>{{ reservation.starttijd.strftime('%d/%m/%Y') }}</strong>
+      </div>
+      <div>
+        <span style="color:var(--muted)">Tijd:</span>
+        <strong>{{ reservation.starttijd.strftime('%H:%M') }} - {{ reservation.eindtijd.strftime('%H:%M') }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <form method="POST">
+      <div style="display:grid;gap:28px">
+        <!-- Netheid -->
+        <div>
+          <label class="small" style="display:block;margin-bottom:10px;font-weight:600">Netheid</label>
+          <div class="star-rating">
+            {% for i in range(1, 6) %}
+            <input type="radio" name="netheid_score" value="{{ i }}" id="netheid{{ i }}" {% if existing_feedback and existing_feedback.netheid_score == i %}checked{% endif %} required />
+            <label for="netheid{{ i }}">★</label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- WiFi -->
+        <div>
+          <label class="small" style="display:block;margin-bottom:10px;font-weight:600">WiFi Kwaliteit</label>
+          <div class="star-rating">
+            {% for i in range(1, 6) %}
+            <input type="radio" name="wifi_score" value="{{ i }}" id="wifi{{ i }}" {% if existing_feedback and existing_feedback.wifi_score == i %}checked{% endif %} required />
+            <label for="wifi{{ i }}">★</label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Ruimte -->
+        <div>
+          <label class="small" style="display:block;margin-bottom:10px;font-weight:600">Ruimte</label>
+          <div class="star-rating">
+            {% for i in range(1, 6) %}
+            <input type="radio" name="ruimte_score" value="{{ i }}" id="ruimte{{ i }}" {% if existing_feedback and existing_feedback.ruimte_score == i %}checked{% endif %} required />
+            <label for="ruimte{{ i }}">★</label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Stilte -->
+        <div>
+          <label class="small" style="display:block;margin-bottom:10px;font-weight:600">Stilte</label>
+          <div class="star-rating">
+            {% for i in range(1, 6) %}
+            <input type="radio" name="stilte_score" value="{{ i }}" id="stilte{{ i }}" {% if existing_feedback and existing_feedback.stilte_score == i %}checked{% endif %} required />
+            <label for="stilte{{ i }}">★</label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Algemeen -->
+        <div>
+          <label class="small" style="display:block;margin-bottom:10px;font-weight:600">Algemene Ervaring</label>
+          <div class="star-rating">
+            {% for i in range(1, 6) %}
+            <input type="radio" name="algemene_score" value="{{ i }}" id="algemeen{{ i }}" {% if existing_feedback and existing_feedback.algemene_score == i %}checked{% endif %} required />
+            <label for="algemeen{{ i }}">★</label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Extra Opmerkingen -->
+        <div>
+          <label class="small" style="display:block;margin-bottom:10px;font-weight:600">Extra Opmerkingen (optioneel)</label>
+          <textarea name="extra_opmerkingen" rows="4" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:0.95rem;resize:vertical" placeholder="Vertel ons meer over je ervaring...">{% if existing_feedback %}{{ existing_feedback.extra_opmerkingen or '' }}{% endif %}</textarea>
+        </div>
+
+        <div style="text-align:center;margin-top:16px">
+          <button class="btn" type="submit" style="min-width:200px">{% if existing_feedback %}Feedback bijwerken{% else %}Feedback versturen{% endif %}</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+.star-rating {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.star-rating input[type="radio"] {
+  display: none;
+}
+
+.star-rating label {
+  font-size: 2.5rem;
+  color: #ddd;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.star-rating input[type="radio"]:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label {
+  color: var(--primary);
+}
+
+.star-rating input[type="radio"]:checked + label {
+  color: var(--primary);
+}
+</style>
+{% endblock %}
