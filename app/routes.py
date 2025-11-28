@@ -277,7 +277,7 @@ def desk_detail(desk_id):
 @main.route('/mijn_reservaties')
 def mijn_reservaties():
     """
-    Toon alle reservaties van de ingelogde gebruiker.
+    Toon alleen toekomstige reservaties van de ingelogde gebruiker.
     """
     user = get_current_user()
     if not user:
@@ -285,7 +285,13 @@ def mijn_reservaties():
         return redirect(url_for('login', next=url_for('main.mijn_reservaties')))
 
     try:
-        reservations = Reservation.query.filter_by(user_id=user.user_id).order_by(Reservation.starttijd.desc()).all()
+        from datetime import datetime
+        now = datetime.now()
+        # Alleen toekomstige reservaties
+        reservations = Reservation.query.filter(
+            Reservation.user_id == user.user_id,
+            Reservation.starttijd >= now
+        ).order_by(Reservation.starttijd).all()
     except Exception:
         reservations = []
 
@@ -391,6 +397,13 @@ def feedback(res_id):
             if not all(1 <= score <= 5 for score in [netheid, wifi, ruimte, stilte, algemeen]):
                 flash("Alle scores moeten tussen 1 en 5 liggen.")
                 return redirect(url_for('main.feedback', res_id=res_id))
+
+            # Converteer naar omgekeerde schaal: (6 - sterren)
+            netheid = 6 - netheid
+            wifi = 6 - wifi
+            ruimte = 6 - ruimte
+            stilte = 6 - stilte
+            algemeen = 6 - algemeen
 
             if existing_feedback:
                 # Update bestaande feedback

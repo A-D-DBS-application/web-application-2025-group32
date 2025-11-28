@@ -75,7 +75,8 @@
             <td>{{ r.building_adress or 'N/A' }}</td>
             <td>
               {% if r.has_feedback %}
-                <span style="color:var(--success);font-size:0.9rem">✓ Gegeven</span>
+                <span style="color:var(--success);font-size:0.9rem;margin-right:8px">✓ Gegeven</span>
+                <a class="btn-secondary" href="{{ url_for('main.feedback', res_id=r.res_id) }}" style="padding:6px 12px;font-size:0.85rem">Bewerk</a>
               {% else %}
                 <a class="btn" href="{{ url_for('main.feedback', res_id=r.res_id) }}" style="padding:6px 12px;font-size:0.85rem">Geef feedback</a>
               {% endif %}
