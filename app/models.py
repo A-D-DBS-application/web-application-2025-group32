@@ -65,6 +65,21 @@ class Desk(db.Model):
 
     def __repr__(self):
         return f"<Desk {self.desk_id}>"
+    
+    def get_dienst_naam(self):
+        """Geef de dienstnaam terug op basis van dienst_id"""
+        if not self.dienst_id:
+            return "Onbekend"
+        
+        # Mapping van dienst_id naar afdeling naam
+        dienst_mapping = {
+            1: "Marketing",
+            3: "IT",
+            5: "Sales"
+        }
+        
+        return dienst_mapping.get(self.dienst_id, f"Dienst {self.dienst_id}")
+
 
 
 class Reservation(db.Model):

@@ -19,7 +19,7 @@
     <h3 style="margin:0 0 10px 0;color:var(--primary)">Bureau {{ desk.desk_number }}</h3>
     <p class="small" style="margin:4px 0">Gebouw: {{ desk.building.adress }}</p>
     <p class="small" style="margin:4px 0">Verdieping: {{ desk.building.floor }}</p>
-    <p class="small" style="margin:4px 0;color:var(--muted)">Afdeling: {{ desk.dienst_id }}</p>
+    <p class="small" style="margin:4px 0;color:var(--muted)">Dienst: {{ desk.get_dienst_naam() }}</p>
     <p class="small" style="margin:4px 0">Scherm: {{ desk.screen or 'Niet vermeld' }}</p>
     <p class="small" style="margin:4px 0">Stoel: {{ desk.chair or 'Niet vermeld' }}</p>
     <div style="margin-top:16px">
