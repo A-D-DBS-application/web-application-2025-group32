@@ -114,7 +114,7 @@ def available():
 
     # Haal parameters op (building_id bevat nu de building.adress, bv 'A' of 'B')
     building_adress = request.args.get("building_id")
-    floor = request.args.get("floor")
+    floor_str = request.args.get("floor")
     date_str = request.args.get("date")
     start_str = request.args.get("start_time")
     end_str = request.args.get("end_time")
@@ -140,17 +140,31 @@ def available():
         flash("Eindtijd moet later zijn dan starttijd.")
         return redirect(url_for("main.reserve"))
 
-    # Query: alle bureaus
+    # Query: alle bureaus, maar filteren op ZOWEL adress ALS floor
     q = Desk.query
-
-    if building_adress:
-        # zoek building record op basis van adress (A, B, ...)
-        b = Building.query.filter_by(adress=building_adress).first()
-        if b:
-            q = q.filter(Desk.building_id == b.building_id)
-        else:
-            # geen gebouw met die naam -> geen resultaten
-            q = q.filter(False)
+    
+    # Filter op building: zoek building die matcht met ZOWEL adress ALS floor
+    if building_adress or floor_str:
+        building_filters = []
+        if building_adress:
+            building_filters.append(Building.adress == building_adress)
+        if floor_str:
+            try:
+                floor_int = int(floor_str)
+                building_filters.append(Building.floor == floor_int)
+            except ValueError:
+                pass  # Ongeldige floor waarde, negeer
+        
+        if building_filters:
+            # Zoek buildings die matchen met de filters
+            matching_buildings = Building.query.filter(and_(*building_filters)).all()
+            if matching_buildings:
+                # Filter desks op deze building IDs
+                building_ids = [b.building_id for b in matching_buildings]
+                q = q.filter(Desk.building_id.in_(building_ids))
+            else:
+                # Geen matching buildings -> geen resultaten
+                q = q.filter(False)
 
     candidate_desks = q.all()
 
@@ -169,7 +183,7 @@ def available():
     saved = {
         # we bewaren hier de 'adress' string zodat de form dezelfde waarde toont
         "building_id": building_adress or "",
-        "floor": floor or "",
+        "floor": floor_str or "",
         "date": date_str,
         "start_time": start_str,
         "end_time": end_str,
