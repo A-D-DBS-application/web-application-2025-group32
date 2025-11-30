@@ -44,22 +44,22 @@
       <div class="metric-value">
         {{ analysis.urgency_distribution.urgent + analysis.urgency_distribution.kritiek }}
       </div>
-      <div class="metric-label">Urgent</div>
-    </div>
-    <div class="metric">
-      <div class="metric-value">{{ analysis.urgency_distribution.belangrijk }}</div>
       <div class="metric-label">Belangrijk</div>
     </div>
     <div class="metric">
+      <div class="metric-value">{{ analysis.urgency_distribution.belangrijk }}</div>
+      <div class="metric-label">Voldoende</div>
+    </div>
+    <div class="metric">
       <div class="metric-value">{{ analysis.urgency_distribution.positief }}</div>
-      <div class="metric-label">Positief</div>
+      <div class="metric-label">Uitstekend</div>
     </div>
   </div>
 
   <!-- Urgent Feedback Section -->
   <div class="feedback-section">
     <div class="section-header">
-      <h2>Urgente feedback</h2>
+      <h2>Belangrijke feedback</h2>
       <span class="section-count">
         {{ analysis.urgent_feedback|length }} meldingen
       </span>
@@ -101,7 +101,7 @@
                 </div>
               </div>
 
-              <p class="feedback-summary">{{ item.summary }}</p>
+              <div class="feedback-summary">{{ item.summary|safe }}</div>
 
               {% if item.scores %}
                 <div class="feedback-scores">
@@ -136,7 +136,7 @@
       </div>
     {% else %}
       <div class="empty-state">
-        <p>Geen urgente feedback op dit moment.</p>
+        <p>Geen belangrijke feedback op dit moment.</p>
       </div>
     {% endif %}
   </div>
@@ -183,7 +183,7 @@
                     </form>
                   {% endif %}
                 </div>
-                <p class="feedback-summary">{{ item.summary }}</p>
+                <div class="feedback-summary">{{ item.summary|safe }}</div>
 
                 {% if item.scores %}
                   <div class="feedback-scores">
@@ -547,9 +547,9 @@
 
   .feedback-summary {
     margin: 0.5rem 0;
-    font-size: 0.95rem;
-    font-weight: 500;
+    font-size: 0.9rem;
     color: var(--color-text);
+    line-height: 1.6;
   }
 
   .feedback-scores {

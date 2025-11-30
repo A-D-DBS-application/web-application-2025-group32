@@ -366,58 +366,76 @@ class FeedbackTopicExtractor:
     
     def summarize_text(self, text: str, max_length: int = 100) -> str:
         """
-        Genereer een automatische samenvatting van feedback tekst.
+        Genereer een compacte samenvatting van feedback tekst.
         
-        Gebruikt extractive summarization: selecteert belangrijkste zinnen.
+        Maakt korte bullet points van belangrijke informatie.
         
         Args:
             text: Feedback tekst
-            max_length: Maximale lengte van samenvatting
+            max_length: Maximale lengte van samenvatting (wordt niet strikt gevolgd voor leesbaarheid)
             
         Returns:
-            Samengevatte tekst
+            Samengevatte tekst met bullet points
         """
-        if not text or len(text) <= max_length:
-            return text
+        if not text:
+            return ""
         
-        # Split op zinnen
-        sentences = re.split(r'[.!?]+', text)
-        sentences = [s.strip() for s in sentences if s.strip()]
+        # Verwijder vulsels en stopwoorden (maar niet 'en' - die gebruiken we voor splitsen)
+        filler_words = {'ja', 'nee', 'oh', 'ah', 'eh', 'nou', 'dus', 'eigenlijk', 
+                       'gewoon', 'zoals', 'man', 'jongen', 'zeg', 'hoor', 'he', 'hè',
+                       'heel', 'erg', 'was', 'waren', 'is', 'zijn', 'wat', 'een',
+                       'de', 'het', 'er', 'maar', 'ook', 'dat', 'die', 'deze'}
         
-        if not sentences:
-            return text[:max_length] + '...'
+        # Woorden die we willen inkorten
+        replacements = {
+            'bureau was': 'bureau',
+            'wifi was': 'wifi',
+            'scherm was': 'scherm',
+            'ruimte was': 'ruimte',
+            'was heel': '',
+            'heel proper': 'proper',
+            'heel goed': 'goed',
+            'was top': 'top',
+            'helaas was er': '',
+            'helaas': '',
+        }
         
-        # Score zinnen op basis van belangrijke woorden
-        sentence_scores = []
-        tokens = self.preprocess_text(text)
-        important_words = set()
+        # Split eerst op zinnen, komma's EN 'en' (voor aparte punten)
+        parts = re.split(r'[.,;!?]+|\s+en\s+', text.lower())
+        key_points = []
         
-        # Identificeer belangrijke woorden (negatief, positief, topic-gerelateerd)
-        for token in tokens:
-            if (token in self.NEGATIVE_WORDS or 
-                token in self.POSITIVE_WORDS or
-                any(token in keywords for keywords in self.TOPIC_KEYWORDS.values())):
-                important_words.add(token)
+        for part in parts:
+            part = part.strip()
+            if not part or len(part) < 3:
+                continue
+            
+            # Pas replacements toe
+            for old, new in replacements.items():
+                part = part.replace(old, new)
+            
+            # Verwijder vulsels
+            words = part.split()
+            # Filter alle vulwoorden eruit (behalve 'en' want die is al gebruikt voor splitsen)
+            words = [w for w in words if w not in filler_words and len(w) > 1]
+            
+            if words:
+                # Maak compacte zin
+                clean_part = ' '.join(words).strip()
+                # Alleen toevoegen als er content overblijft
+                if clean_part and len(clean_part) > 2:
+                    key_points.append(clean_part)
         
-        # Score elke zin
-        for sentence in sentences:
-            sentence_tokens = set(self.preprocess_text(sentence))
-            score = len(sentence_tokens & important_words)
-            sentence_scores.append((sentence, score))
+        # Maximaal 3 bullets
+        if not key_points:
+            return text[:50] + '...'
         
-        # Sorteer op score en selecteer beste zinnen
-        sentence_scores.sort(key=lambda x: x[1], reverse=True)
+        # Neem eerste 3 belangrijkste punten
+        key_points = key_points[:3]
         
-        # Bouw samenvatting
-        summary = []
-        current_length = 0
-        
-        for sentence, score in sentence_scores:
-            if current_length + len(sentence) <= max_length:
-                summary.append(sentence)
-                current_length += len(sentence) + 2  # +2 for '. '
-            else:
-                break
+        # Return met bullets
+        return '• ' + '<br>• '.join(key_points)
+        return '• ' + '<br>• '.join(key_points)
+
         
         if not summary:
             # Als geen zinnen passen, neem eerste zin en kort in
