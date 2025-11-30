@@ -24,8 +24,11 @@ class User(db.Model):
 
     def is_admin(self):
         """Check of gebruiker admin is - kijkt naar role veld in database"""
-        # In de database staat 'Beheerder' voor admins en 'Medewerker' voor normale users
-        return self.role and self.role.lower() == 'beheerder'
+        # Accepteer zowel 'Beheerder', 'admin' als 'Admin' voor admin rechten
+        if not self.role:
+            return False
+        role_lower = self.role.lower()
+        return role_lower in ['beheerder', 'admin']
 
 
 class Building(db.Model):

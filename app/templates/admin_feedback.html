@@ -147,14 +147,14 @@
       <div class="section-header">
         <h2>Overige feedback</h2>
         <span class="section-count">
-          {% set regular_count = analysis.detailed_items|selectattr('urgency_score', '<=', 60)|selectattr('urgency_score', '>=', 20)|list|length %}
+          {% set regular_count = analysis.detailed_items|selectattr('urgency_score', '<=', 60)|list|length %}
           {{ regular_count }} meldingen
         </span>
       </div>
 
       <div class="feedback-list">
         {% for item in analysis.detailed_items %}
-          {% if item.urgency_score <= 60 and item.urgency_score >= 20 %}
+          {% if item.urgency_score <= 60 %}
             <div class="feedback-item {% if not item.get('is_reviewed') %}unread{% endif %}">
               <div class="feedback-left">
                 {% if not item.get('is_reviewed') %}

@@ -58,6 +58,7 @@ def home():
 
     # try to load the user record from the DB (models available via package)
     user_obj = None
+    is_admin = False  # Default value
     try:
         from app.models import User, Reservation
         from datetime import datetime, timedelta
