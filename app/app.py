@@ -15,9 +15,35 @@ except Exception:
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        user_id = request.form["user_id"]
-        session["user"] = user_id
-        return redirect(url_for("home"))
+        user_id_input = request.form.get("user_id", "").strip()
+        
+        # Valideer dat user_id niet leeg is
+        if not user_id_input:
+            flash("Gelieve een gebruikers-ID in te geven.")
+            return redirect(url_for("login"))
+        
+        # Probeer te converteren naar integer
+        try:
+            user_id = int(user_id_input)
+        except ValueError:
+            flash("Ongeldig gebruikers-ID. Gelieve een nummer in te geven.")
+            return redirect(url_for("login"))
+        
+        # Check of gebruiker bestaat in database
+        try:
+            from app.models import User
+            user = User.query.filter_by(user_id=user_id).first()
+            if not user:
+                flash("Gebruiker niet gevonden. Controleer je gebruikers-ID.")
+                return redirect(url_for("login"))
+            
+            # Gebruiker bestaat, log in
+            session["user"] = user_id
+            return redirect(url_for("home"))
+        except Exception as e:
+            flash("Fout bij aanmelden. Probeer opnieuw.")
+            return redirect(url_for("login"))
+    
     return render_template("login.html")
 
 @app.route("/home")

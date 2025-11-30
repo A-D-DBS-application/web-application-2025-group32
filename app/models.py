@@ -53,6 +53,8 @@ class Desk(db.Model):
     desk_number = db.Column(db.Integer)  # Bureau nummer
     building_id = db.Column(db.Integer, db.ForeignKey("building.building_id"), nullable=False)
     dienst_id = db.Column(db.Integer)  # Afdeling
+    screen = db.Column(db.Text)  # Type scherm
+    chair = db.Column(db.Text)  # Type stoel
     
     # Relaties
     building = db.relationship("Building", back_populates="desks")
