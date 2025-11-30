@@ -184,6 +184,34 @@
                   {% endif %}
                 </div>
                 <p class="feedback-summary">{{ item.summary }}</p>
+
+                {% if item.scores %}
+                  <div class="feedback-scores">
+                    {% for score_name, score_value in item.scores.items() %}
+                      {% if score_value %}
+                        <span class="score {% if score_value <= 2 %}low{% elif score_value == 3 %}medium{% else %}high{% endif %}">
+                          {{ score_name|capitalize }}: {{ score_value }}/5
+                        </span>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+
+                <div class="feedback-meta">
+                  {% for topic, relevance in item.topics[:3] %}
+                    <span class="tag">{{ topic }}</span>
+                  {% endfor %}
+                  <span class="sentiment {% if item.sentiment.sentiment_label == 'positief' %}positive{% elif item.sentiment.sentiment_label == 'negatief' %}negative{% else %}neutral{% endif %}">
+                    {{ item.sentiment.sentiment_label|capitalize }}
+                  </span>
+                </div>
+
+                {% if item.full_text %}
+                  <details class="feedback-details">
+                    <summary>Volledige melding</summary>
+                    <p>{{ item.full_text }}</p>
+                  </details>
+                {% endif %}
               </div>
             </div>
           {% endif %}
