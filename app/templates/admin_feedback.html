@@ -78,8 +78,8 @@
             <div class="feedback-main">
               <div class="feedback-header">
                 <div>
-                  <span class="urgency {% if item.urgency_score >= 80 %}critical{% elif item.urgency_score >= 60 %}high{% else %}medium{% endif %}">
-                    {{ item.urgency_score|int }}/100
+                  <span class="urgency {% if item.urgency_score >= 80 %}critical{% elif item.urgency_score >= 60 %}high{% elif item.urgency_score >= 40 %}medium{% elif item.urgency_score >= 20 %}low{% else %}quality{% endif %}">
+                    Score: {{ item.display_score|int }}/100
                   </span>
                   <span class="feedback-id">#{{ item.feedback_id }}</span>
                   {% if not item.get('is_reviewed') %}
@@ -165,7 +165,9 @@
               <div class="feedback-main">
                 <div class="feedback-header">
                   <div>
-                    <span class="urgency low">{{ item.urgency_score|int }}/100</span>
+                    <span class="urgency {% if item.urgency_score >= 80 %}critical{% elif item.urgency_score >= 60 %}high{% elif item.urgency_score >= 40 %}medium{% elif item.urgency_score >= 20 %}low{% else %}quality{% endif %}">
+                      Score: {{ item.display_score|int }}/100
+                    </span>
                     <span class="feedback-id">#{{ item.feedback_id }}</span>
                     {% if not item.get('is_reviewed') %}
                       <span class="badge-new">Nieuw</span>
@@ -466,6 +468,11 @@
   .urgency.low {
     background-color: #f3f4f6;
     color: #4b5563;
+  }
+
+  .urgency.quality {
+    background-color: #dcfce7;
+    color: #166534;
   }
 
   .feedback-id {

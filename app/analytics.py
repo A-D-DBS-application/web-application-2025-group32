@@ -508,8 +508,17 @@ class FeedbackTopicExtractor:
             # Key phrases
             key_phrases = self.extract_key_phrases(item['tokens'], tfidf, n=3)
             
-            # Urgentie score
+            # Urgentie score (voor interne sortering)
             urgency = self.calculate_urgency_score(sentiment, item['scores'], topics)
+            
+            # Bereken display score (som van alle sterren / maximum * 100)
+            valid_scores = [s for s in item['scores'].values() if s is not None]
+            if valid_scores:
+                total_score = sum(valid_scores)
+                max_possible = len(valid_scores) * 5  # elk item max 5 sterren
+                display_score = (total_score / max_possible) * 100
+            else:
+                display_score = 0
             
             # Tekst samenvatting
             summary = self.summarize_text(item['text'], max_length=150)
@@ -526,6 +535,7 @@ class FeedbackTopicExtractor:
                 'key_phrases': key_phrases,
                 'scores': item['scores'],
                 'urgency_score': urgency,
+                'display_score': display_score,
                 'summary': summary,
                 'full_text': item['text']
             })
