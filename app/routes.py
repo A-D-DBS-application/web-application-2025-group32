@@ -452,6 +452,12 @@ def feedback_analysis():
     
     Toont prioriteit-gesorteerde feedback met gelezen/ongelezen status.
     """
+    # Haal ingelogde gebruiker op
+    user = get_current_user()
+    if not user:
+        flash("Gelieve eerst aan te melden.")
+        return redirect(url_for('login'))
+    
     try:
         from app.analytics import analyze_feedback_from_db
         from datetime import datetime
@@ -475,8 +481,8 @@ def feedback_analysis():
                 item['is_reviewed'] = feedback_record.is_reviewed
                 item['reviewed_at'] = feedback_record.reviewed_at
         
-        # Render mooie admin template
-        return render_template('admin_feedback.html', analysis=analysis, unread_count=unread_count)
+        # Render mooie admin template met user info
+        return render_template('admin_feedback.html', analysis=analysis, unread_count=unread_count, user=user)
         
     except Exception as e:
         flash(f"Fout bij uitvoeren van feedback analyse: {str(e)}", "danger")
