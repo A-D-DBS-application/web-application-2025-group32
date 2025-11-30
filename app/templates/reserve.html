@@ -13,18 +13,18 @@
     <form method="POST">
       <div style="display:grid;gap:20px">
         <div>
-          <label class="small">Gebouw</label>
-          <select name="building_id" required>
-            <option value="">-- Selecteer een gebouw --</option>
+          <label class="small">Gebouw (optioneel)</label>
+          <select name="building_id">
+            <option value="">-- Alle gebouwen --</option>
             {% for building in buildings %}
               <option value="{{ building.adress }}" {% if saved.building_id|string == building.adress|string %}selected{% endif %}>{{ building.adress }}</option>
             {% endfor %}
           </select>
         </div>
         <div>
-          <label class="small">Verdieping</label>
-          <select name="floor" required>
-            <option value="">-- Selecteer verdieping --</option>
+          <label class="small">Verdieping (optioneel)</label>
+          <select name="floor">
+            <option value="">-- Alle verdiepingen --</option>
             {% for f in floors %}
               <option value="{{ f }}" {% if saved.floor|string == f|string %}selected{% endif %}>Verdieping {{ f }}</option>
             {% endfor %}

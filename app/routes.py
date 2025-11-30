@@ -140,17 +140,21 @@ def available():
         flash("Eindtijd moet later zijn dan starttijd.")
         return redirect(url_for("main.reserve"))
 
-    # Query: alle bureaus, maar filteren op ZOWEL adress ALS floor
+    # Query: alle bureaus, maar filteren op ZOWEL adress ALS floor (optioneel)
     q = Desk.query
     
-    # Filter op building: zoek building die matcht met ZOWEL adress ALS floor
-    if building_adress or floor_str:
+    # Filter op building: zoek building die matcht met ZOWEL adress ALS floor (alleen als ingevuld)
+    # Check of de waarden niet leeg zijn
+    has_building = building_adress and building_adress.strip()
+    has_floor = floor_str and floor_str.strip()
+    
+    if has_building or has_floor:
         building_filters = []
-        if building_adress:
-            building_filters.append(Building.adress == building_adress)
-        if floor_str:
+        if has_building:
+            building_filters.append(Building.adress == building_adress.strip())
+        if has_floor:
             try:
-                floor_int = int(floor_str)
+                floor_int = int(floor_str.strip())
                 building_filters.append(Building.floor == floor_int)
             except ValueError:
                 pass  # Ongeldige floor waarde, negeer
@@ -165,6 +169,7 @@ def available():
             else:
                 # Geen matching buildings -> geen resultaten
                 q = q.filter(False)
+    # Als geen filters, toon alle bureaus
 
     candidate_desks = q.all()
 
