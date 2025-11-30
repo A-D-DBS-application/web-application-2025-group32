@@ -24,4 +24,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Warning: could not create tables: {e}")
 
-    app.run(debug=True)
+    app.run(debug=True, port=5001)

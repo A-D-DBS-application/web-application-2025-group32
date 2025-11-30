@@ -23,8 +23,9 @@ class User(db.Model):
         return f"<User {self.user_id}>"
 
     def is_admin(self):
-        """Check of gebruiker admin is"""
-        return self.role == 'admin'
+        """Check of gebruiker admin is - kijkt naar role veld in database"""
+        # In de database staat 'Beheerder' voor admins en 'Medewerker' voor normale users
+        return self.role and self.role.lower() == 'beheerder'
 
 
 class Building(db.Model):
@@ -94,6 +95,8 @@ class Feedback(db.Model):
     stilte_score = db.Column(db.SmallInteger)  # Stilte score (1-5)
     algemene_score = db.Column(db.SmallInteger)  # Algemene score (1-5)
     extra_opmerkingen = db.Column(db.Text)  # Extra opmerkingen
+    is_reviewed = db.Column(db.Boolean, default=False)  # Of admin de feedback heeft bekeken
+    reviewed_at = db.Column(db.DateTime, nullable=True)  # Wanneer bekeken
     
     # Relatie
     reservation = db.relationship("Reservation", back_populates="feedback")

@@ -1,0 +1,681 @@
+{% extends "base.html" %}
+{% block title %}Feedbackbeheer - Admin{% endblock %}
+
+{% block content %}
+<div class="container-lg">
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1>Feedbackoverzicht</h1>
+      <p class="text-muted">Alle meldingen, gesorteerd op prioriteit</p>
+    </div>
+    <div class="header-actions">
+      {% if unread_count > 0 %}
+        <span class="badge-count">
+          {{ unread_count }} ongelezen
+        </span>
+      {% else %}
+        <span class="badge-success">
+          ✓ Allemaal gelezen
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Key Insights (if present) -->
+  {% if analysis.key_insights %}
+    <div class="insight-box">
+      <h6 class="insight-title">Belangrijkste inzichten</h6>
+      <ul class="insight-list">
+        {% for insight in analysis.key_insights %}
+          <li>{{ insight }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <!-- Metrics Row -->
+  <div class="metrics-grid">
+    <div class="metric">
+      <div class="metric-value">{{ analysis.total_feedback }}</div>
+      <div class="metric-label">Totale feedback</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value">
+        {{ analysis.urgency_distribution.urgent + analysis.urgency_distribution.kritiek }}
+      </div>
+      <div class="metric-label">Urgent</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value">{{ analysis.urgency_distribution.belangrijk }}</div>
+      <div class="metric-label">Belangrijk</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value">{{ analysis.urgency_distribution.positief }}</div>
+      <div class="metric-label">Positief</div>
+    </div>
+  </div>
+
+  <!-- Urgent Feedback Section -->
+  <div class="feedback-section">
+    <div class="section-header">
+      <h2>Urgente feedback</h2>
+      <span class="section-count">
+        {{ analysis.urgent_feedback|length }} meldingen
+      </span>
+    </div>
+
+    {% if analysis.urgent_feedback %}
+      <div class="feedback-list">
+        {% for item in analysis.urgent_feedback %}
+          <div class="feedback-item {% if not item.get('is_reviewed') %}unread{% endif %}">
+            <div class="feedback-left">
+              {% if not item.get('is_reviewed') %}
+                <div class="unread-indicator"></div>
+              {% endif %}
+            </div>
+
+            <div class="feedback-main">
+              <div class="feedback-header">
+                <div>
+                  <span class="urgency {% if item.urgency_score >= 80 %}critical{% elif item.urgency_score >= 60 %}high{% else %}medium{% endif %}">
+                    {{ item.urgency_score|int }}/100
+                  </span>
+                  <span class="feedback-id">#{{ item.feedback_id }}</span>
+                  {% if not item.get('is_reviewed') %}
+                    <span class="badge-new">Nieuw</span>
+                  {% endif %}
+                </div>
+                <div class="feedback-actions">
+                  {% if not item.get('is_reviewed') %}
+                    <form
+                      action="{{ url_for('main.mark_feedback_reviewed', feedback_id=item.feedback_id) }}"
+                      method="POST"
+                      style="display: inline;"
+                    >
+                      <button type="submit" class="btn-text">Markeer als gelezen</button>
+                    </form>
+                  {% else %}
+                    <span class="text-subtle">Gelezen</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <p class="feedback-summary">{{ item.summary }}</p>
+
+              {% if item.scores %}
+                <div class="feedback-scores">
+                  {% for score_name, score_value in item.scores.items() %}
+                    {% if score_value %}
+                      <span class="score {% if score_value <= 2 %}low{% elif score_value == 3 %}medium{% else %}high{% endif %}">
+                        {{ score_name|capitalize }}: {{ score_value }}/5
+                      </span>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              {% endif %}
+
+              <div class="feedback-meta">
+                {% for topic, relevance in item.topics[:3] %}
+                  <span class="tag">{{ topic }}</span>
+                {% endfor %}
+                <span class="sentiment {% if item.sentiment.sentiment_label == 'positief' %}positive{% elif item.sentiment.sentiment_label == 'negatief' %}negative{% else %}neutral{% endif %}">
+                  {{ item.sentiment.sentiment_label|capitalize }}
+                </span>
+              </div>
+
+              {% if item.full_text %}
+                <details class="feedback-details">
+                  <summary>Volledige melding</summary>
+                  <p>{{ item.full_text }}</p>
+                </details>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p>Geen urgente feedback op dit moment.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Regular Feedback Section -->
+  {% if analysis.detailed_items %}
+    <div class="feedback-section">
+      <div class="section-header">
+        <h2>Overige feedback</h2>
+        <span class="section-count">
+          {% set regular_count = analysis.detailed_items|selectattr('urgency_score', '<=', 60)|selectattr('urgency_score', '>=', 20)|list|length %}
+          {{ regular_count }} meldingen
+        </span>
+      </div>
+
+      <div class="feedback-list">
+        {% for item in analysis.detailed_items %}
+          {% if item.urgency_score <= 60 and item.urgency_score >= 20 %}
+            <div class="feedback-item {% if not item.get('is_reviewed') %}unread{% endif %}">
+              <div class="feedback-left">
+                {% if not item.get('is_reviewed') %}
+                  <div class="unread-indicator"></div>
+                {% endif %}
+              </div>
+
+              <div class="feedback-main">
+                <div class="feedback-header">
+                  <div>
+                    <span class="urgency low">{{ item.urgency_score|int }}/100</span>
+                    <span class="feedback-id">#{{ item.feedback_id }}</span>
+                    {% if not item.get('is_reviewed') %}
+                      <span class="badge-new">Nieuw</span>
+                    {% endif %}
+                  </div>
+                  {% if not item.get('is_reviewed') %}
+                    <form
+                      action="{{ url_for('main.mark_feedback_reviewed', feedback_id=item.feedback_id) }}"
+                      method="POST"
+                      style="display: inline;"
+                    >
+                      <button type="submit" class="btn-text">Markeer als gelezen</button>
+                    </form>
+                  {% endif %}
+                </div>
+                <p class="feedback-summary">{{ item.summary }}</p>
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Footer -->
+  <div class="page-footer">
+    <a href="{{ url_for('home') }}" class="btn-secondary">← Terug naar dashboard</a>
+  </div>
+</div>
+
+<style>
+  :root {
+    --color-bg: #fafbfc;
+    --color-surface: #ffffff;
+    --color-border: #e5e7eb;
+    --color-text: #1f2937;
+    --color-text-secondary: #6b7280;
+    --color-text-muted: #9ca3af;
+    --color-accent: #2563eb;
+    --color-accent-hover: #1d4ed8;
+    --color-urgent: #dc2626;
+    --color-warning: #f59e0b;
+    --color-success: #059669;
+    --color-error: #dc2626;
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 1rem;
+    --spacing-md: 1.5rem;
+    --spacing-lg: 2rem;
+    --spacing-xl: 3rem;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica',
+      'Arial', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-text);
+    background-color: var(--color-bg);
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  .container-lg {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+  }
+
+  /* Header */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .page-header h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+  }
+
+  .page-header p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+  }
+
+  .header-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+  }
+
+  .badge-count {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-urgent);
+    color: white;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .badge-success {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-success);
+    color: white;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  /* Insights */
+  .insight-box {
+    background-color: #f0f4ff;
+    border-left: 3px solid var(--color-accent);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    border-radius: var(--radius-md);
+  }
+
+  .insight-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .insight-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    list-style: disc;
+    color: var(--color-text-secondary);
+  }
+
+  .insight-list li {
+    margin-bottom: 0.35rem;
+    font-size: 0.9rem;
+  }
+
+  /* Metrics */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .metric {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    text-align: center;
+  }
+
+  .metric-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.5rem;
+  }
+
+  .metric-label {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+  }
+
+  /* Sections */
+  .feedback-section {
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .section-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .section-count {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+  }
+
+  /* Feedback List */
+  .feedback-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .feedback-item {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color 0.15s ease;
+  }
+
+  .feedback-item:last-child {
+    border-bottom: none;
+  }
+
+  .feedback-item.unread {
+    background-color: #f9fafb;
+  }
+
+  .feedback-item:hover {
+    background-color: #f3f4f6;
+  }
+
+  .feedback-left {
+    flex-shrink: 0;
+    width: 12px;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 0.25rem;
+  }
+
+  .unread-indicator {
+    width: 8px;
+    height: 8px;
+    background-color: var(--color-accent);
+    border-radius: 50%;
+    margin-top: 0.35rem;
+  }
+
+  .feedback-main {
+    flex: 1;
+  }
+
+  .feedback-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+  }
+
+  .feedback-header > div:first-child {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .urgency {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: #f3f4f6;
+    color: var(--color-text);
+  }
+
+  .urgency.critical {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  .urgency.high {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .urgency.medium {
+    background-color: #dbeafe;
+    color: #1e40af;
+  }
+
+  .urgency.low {
+    background-color: #f3f4f6;
+    color: #4b5563;
+  }
+
+  .feedback-id {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .badge-new {
+    display: inline-block;
+    padding: 0.2rem 0.4rem;
+    background-color: var(--color-accent);
+    color: white;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .feedback-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .btn-text {
+    background: none;
+    border: none;
+    color: var(--color-accent);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0;
+    transition: color 0.15s ease;
+  }
+
+  .btn-text:hover {
+    color: var(--color-accent-hover);
+    text-decoration: underline;
+  }
+
+  .text-subtle {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+  }
+
+  .feedback-summary {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .feedback-scores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+  }
+
+  .score {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background-color: #f3f4f6;
+    color: var(--color-text);
+  }
+
+  .score.low {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  .score.medium {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  .score.high {
+    background-color: #dcfce7;
+    color: #166534;
+  }
+
+  .feedback-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: #f3f4f6;
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  .sentiment {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .sentiment.positive {
+    background-color: #dcfce7;
+    color: #166534;
+  }
+
+  .sentiment.negative {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  .sentiment.neutral {
+    background-color: #f3f4f6;
+    color: #4b5563;
+  }
+
+  .feedback-details {
+    margin-top: 0.75rem;
+  }
+
+  .feedback-details summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--color-accent);
+    font-weight: 500;
+    user-select: none;
+  }
+
+  .feedback-details summary:hover {
+    text-decoration: underline;
+  }
+
+  .feedback-details p {
+    margin: 0.75rem 0 0 0;
+    padding: 0.75rem;
+    background-color: #f9fafb;
+    border-left: 2px solid var(--color-border);
+    border-radius: 3px;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+  }
+
+  .empty-state {
+    padding: 2rem;
+    text-align: center;
+    color: var(--color-text-secondary);
+  }
+
+  /* Footer */
+  .page-footer {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+  }
+
+  .btn-secondary {
+    display: inline-block;
+    padding: 0.6rem 1.2rem;
+    background-color: #f3f4f6;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-secondary:hover {
+    background-color: #e5e7eb;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .container-lg {
+      padding: var(--spacing-md);
+    }
+
+    .page-header {
+      flex-direction: column;
+      gap: var(--spacing-md);
+    }
+
+    .section-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .metrics-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .feedback-item {
+      flex-direction: column;
+    }
+
+    .feedback-header {
+      flex-direction: column;
+    }
+  }
+</style>
+{% endblock %}

@@ -44,8 +44,10 @@ def home():
     # Als we geen user record vinden, val terug op de raw session waarde
     if not user_obj:
         display = session.get("user")
+        is_admin = False
     else:
         display = f"{user_obj.user_name} {user_obj.user_last_name}"
+        is_admin = user_obj.is_admin()
 
     # Haal aankomende reservaties op (komende week)
     upcoming = []
@@ -85,7 +87,7 @@ def home():
         upcoming = []
         completed = []
 
-    return render_template("home.html", user=display, user_display=display, upcoming=upcoming, completed=completed)
+    return render_template("home.html", user=display, user_display=display, upcoming=upcoming, completed=completed, is_admin=is_admin)
 
 @app.route("/logout")
 def logout():
@@ -110,4 +112,4 @@ if __name__ == "__main__":
             db.create_all()  # Maak alle tabellen aan als ze niet bestaan
         except Exception as e:
             print(f"Warning: could not create tables: {e}")
-    app.run(debug=True)
+    app.run(debug=True, port=5001)

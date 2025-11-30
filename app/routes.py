@@ -50,7 +50,11 @@ def reserve():
     # login for actions that create reservations (POST).
     buildings = []
     try:
-        buildings = Building.query.all()
+        # Get unique buildings (distinct by adress) and sort alphabetically
+        from sqlalchemy import distinct
+        unique_addresses = db.session.query(distinct(Building.adress)).order_by(Building.adress).all()
+        # For each unique address, get one building object
+        buildings = [Building.query.filter_by(adress=addr[0]).first() for addr in unique_addresses]
     except Exception:
         buildings = []
     floors = [0, 1, 2]
@@ -439,3 +443,59 @@ def feedback(res_id):
                          user=user, 
                          reservation=reservation,
                          existing_feedback=existing_feedback)
+
+
+@main.route("/admin/feedback-analysis")
+def feedback_analysis():
+    """
+    Admin dashboard voor complexe feedback analyse.
+    
+    Toont prioriteit-gesorteerde feedback met gelezen/ongelezen status.
+    """
+    try:
+        from app.analytics import analyze_feedback_from_db
+        from datetime import datetime
+        
+        # Voer de complexe analyse uit
+        analysis = analyze_feedback_from_db(db.session)
+        
+        # Haal ongelezen count op
+        unread_count = db.session.query(Feedback).filter_by(is_reviewed=False).count()
+        
+        # Voeg feedback records toe aan analysis voor gelezen/ongelezen status
+        for item in analysis.get('detailed_items', []):
+            feedback_record = db.session.query(Feedback).filter_by(feedback_id=item['feedback_id']).first()
+            if feedback_record:
+                item['is_reviewed'] = feedback_record.is_reviewed
+                item['reviewed_at'] = feedback_record.reviewed_at
+        
+        for item in analysis.get('urgent_feedback', []):
+            feedback_record = db.session.query(Feedback).filter_by(feedback_id=item['feedback_id']).first()
+            if feedback_record:
+                item['is_reviewed'] = feedback_record.is_reviewed
+                item['reviewed_at'] = feedback_record.reviewed_at
+        
+        # Render mooie admin template
+        return render_template('admin_feedback.html', analysis=analysis, unread_count=unread_count)
+        
+    except Exception as e:
+        flash(f"Fout bij uitvoeren van feedback analyse: {str(e)}", "danger")
+        return redirect(url_for('main.reserve'))
+
+
+@main.route("/admin/feedback/<int:feedback_id>/mark-reviewed", methods=["POST"])
+def mark_feedback_reviewed(feedback_id):
+    """Markeer feedback als gelezen door admin."""
+    try:
+        from datetime import datetime
+        
+        feedback = db.session.query(Feedback).filter_by(feedback_id=feedback_id).first()
+        if feedback:
+            feedback.is_reviewed = True
+            feedback.reviewed_at = datetime.now()
+            db.session.commit()
+        
+        return redirect(url_for('main.feedback_analysis'))
+    except Exception as e:
+        flash(f"Fout bij markeren van feedback: {str(e)}", "danger")
+        return redirect(url_for('main.feedback_analysis'))
