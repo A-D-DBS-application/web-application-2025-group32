@@ -99,7 +99,8 @@ def reserve():
                            user=user,
                            buildings=buildings,
                            floors=floors,
-                           saved=saved)
+                           saved=saved,
+                           is_admin=user.is_admin() if user and hasattr(user, 'is_admin') else False)
 
 
 @main.route("/reserve/available", methods=["GET", "POST"])
@@ -218,7 +219,8 @@ def available():
                            user=user,
                            desks=available_desks,
                            saved=saved,
-                           buildings=all_buildings)
+                           buildings=all_buildings,
+                           is_admin=user.is_admin() if user and hasattr(user, 'is_admin') else False)
 
 
 @main.route("/reserve/desk/<int:desk_id>", methods=["GET", "POST"])
@@ -308,7 +310,8 @@ def desk_detail(desk_id):
                            desk=desk,
                            date=date_str,
                            start_time=start_str,
-                           end_time=end_str)
+                           end_time=end_str,
+                           is_admin=user.is_admin() if user and hasattr(user, 'is_admin') else False)
 
 
 @main.route('/mijn_reservaties')
@@ -352,7 +355,10 @@ def mijn_reservaties():
             'eindtijd': r.eindtijd,
         })
 
-    return render_template('mijn_reservaties.html', user=user, reservations=rows)
+    return render_template('mijn_reservaties.html', 
+                           user=user, 
+                           reservations=rows,
+                           is_admin=user.is_admin() if user and hasattr(user, 'is_admin') else False)
 
 
 @main.route('/mijn_reservaties/cancel/<int:res_id>', methods=['POST'])
@@ -475,7 +481,8 @@ def feedback(res_id):
     return render_template('feedback.html', 
                          user=user, 
                          reservation=reservation,
-                         existing_feedback=existing_feedback)
+                         existing_feedback=existing_feedback,
+                         is_admin=user.is_admin() if user and hasattr(user, 'is_admin') else False)
 
 
 @main.route("/admin/feedback-analysis")
@@ -514,8 +521,11 @@ def feedback_analysis():
                 item['is_reviewed'] = feedback_record.is_reviewed
                 item['reviewed_at'] = feedback_record.reviewed_at
         
+        # Check if user is admin
+        is_admin = user.is_admin() if user and hasattr(user, 'is_admin') else False
+        
         # Render mooie admin template met user info
-        return render_template('admin_feedback.html', analysis=analysis, unread_count=unread_count, user=user)
+        return render_template('admin_feedback.html', analysis=analysis, unread_count=unread_count, user=user, is_admin=is_admin)
         
     except Exception as e:
         flash(f"Fout bij uitvoeren van feedback analyse: {str(e)}", "danger")

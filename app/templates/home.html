@@ -17,22 +17,6 @@
         <a class="btn btn-secondary" href="{{ url_for('main.mijn_reservaties') }}">Mijn reservaties</a>
       </div>
     </div>
-    
-    
-    <!-- DEBUG: is_admin = {{ is_admin }} -->
-    {% if is_admin %}
-    <div class="card" style="margin-top:20px;border:2px solid var(--primary)">
-      <h3 style="margin:0 0 12px 0;color:var(--primary);font-size:1.15rem">🔧 Admin Tools</h3>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <a class="btn" href="{{ url_for('main.feedback_analysis') }}" style="background:linear-gradient(135deg, var(--primary), #0056b3);box-shadow:0 4px 12px rgba(0,123,255,0.3)">
-          📊 Feedback Analyse
-        </a>
-        <p style="margin:0;font-size:0.85rem;color:var(--muted)">
-          AI-powered analyse van alle gebruikersfeedback met urgentie prioritering
-        </p>
-      </div>
-    </div>
-    {% endif %}
   </aside>
 
   <div style="flex:1">
