@@ -184,6 +184,20 @@ def available():
         if not overlapping:
             available_desks.append(desk)
 
+    # Prioriteitssortering: bureaus die de gebruiker al heeft geboekt komen bovenaan
+    if user:
+        # Tel per bureau hoeveel keer deze gebruiker het heeft geboekt
+        desk_booking_counts = {}
+        for desk in available_desks:
+            count = Reservation.query.filter(
+                Reservation.desk_id == desk.desk_id,
+                Reservation.user_id == user.user_id
+            ).count()
+            desk_booking_counts[desk.desk_id] = count
+        
+        # Sorteer: hoogste count eerst, dan op desk_id als tiebreaker
+        available_desks.sort(key=lambda d: (-desk_booking_counts.get(d.desk_id, 0), d.desk_id))
+
     # Behoud waarden
     saved = {
         # we bewaren hier de 'adress' string zodat de form dezelfde waarde toont
