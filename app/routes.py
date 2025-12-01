@@ -534,7 +534,8 @@ def mark_feedback_reviewed(feedback_id):
             feedback.reviewed_at = datetime.now()
             db.session.commit()
         
-        return redirect(url_for('main.feedback_analysis'))
+        # Redirect terug naar de specifieke feedback item met anchor
+        return redirect(url_for('main.feedback_analysis') + f'#feedback-{feedback_id}')
     except Exception as e:
         flash(f"Fout bij markeren van feedback: {str(e)}", "danger")
         return redirect(url_for('main.feedback_analysis'))

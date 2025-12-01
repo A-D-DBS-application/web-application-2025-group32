@@ -366,13 +366,12 @@ class FeedbackTopicExtractor:
     
     def summarize_text(self, text: str, max_length: int = 100) -> str:
         """
-        Genereer een compacte samenvatting van feedback tekst.
-        
-        Maakt korte bullet points van belangrijke informatie.
+        Genereer een compacte samenvatting van feedback tekst met bullet points.
+        Verwijdert filler woorden en splitst op onderwerpen.
         
         Args:
             text: Feedback tekst
-            max_length: Maximale lengte van samenvatting (wordt niet strikt gevolgd voor leesbaarheid)
+            max_length: Maximale lengte (niet strikt gebruikt)
             
         Returns:
             Samengevatte tekst met bullet points
@@ -380,72 +379,106 @@ class FeedbackTopicExtractor:
         if not text:
             return ""
         
-        # Verwijder vulsels en stopwoorden (maar niet 'en' - die gebruiken we voor splitsen)
-        filler_words = {'ja', 'nee', 'oh', 'ah', 'eh', 'nou', 'dus', 'eigenlijk', 
-                       'gewoon', 'zoals', 'man', 'jongen', 'zeg', 'hoor', 'he', 'hè',
-                       'heel', 'erg', 'was', 'waren', 'is', 'zijn', 'wat', 'een',
-                       'de', 'het', 'er', 'maar', 'ook', 'dat', 'die', 'deze'}
-        
-        # Woorden die we willen inkorten
-        replacements = {
-            'bureau was': 'bureau',
-            'wifi was': 'wifi',
-            'scherm was': 'scherm',
-            'ruimte was': 'ruimte',
-            'was heel': '',
-            'heel proper': 'proper',
-            'heel goed': 'goed',
-            'was top': 'top',
-            'helaas was er': '',
-            'helaas': '',
+        # Filler woorden en stopwoorden die we willen verwijderen
+        filler_words = {
+            'ja', 'nee', 'oh', 'ah', 'eh', 'nou', 'dus', 'eigenlijk', 
+            'gewoon', 'zoals', 'man', 'jongen', 'zeg', 'hoor', 'he', 'hè',
+            'heel', 'erg', 'helaas', 'misschien', 'toch', 'wel',
+            'de', 'het', 'een', 'maar', 'ook', 'dat', 'die', 'deze', 'dit',
+            'er', 'zijn', 'was', 'waren', 'is', 'heeft', 'hebben', 'te',
+            'vond', 'vind', 'vinden', 'enkel', 'alleen', 'beetje', 'iets'
         }
         
-        # Split eerst op zinnen, komma's EN 'en' (voor aparte punten)
-        parts = re.split(r'[.,;!?]+|\s+en\s+', text.lower())
+        # Onderwerp woorden (deze bepalen het onderwerp van een zin)
+        subject_words = {
+            'wifi', 'internet', 'verbinding', 'netwerk',
+            'bureau', 'stoel', 'scherm', 'toetsenbord', 'muis', 'tafel',
+            'ruimte', 'kamer', 'zaal', 'locatie', 'plaats',
+            'geluid', 'lawaai', 'stil', 'luid',
+            'temperatuur', 'warm', 'koud',
+            'netheid', 'proper', 'vuil', 'vies', 'schoon'
+        }
+        
+        # Belangrijke woorden
+        important_words = {
+            'niet', 'geen', 'slecht', 'goed', 'top', 'prima', 'uitstekend',
+            'probleem', 'storing', 'defect', 'kapot', 'werkt', 'functioneert',
+            'klein', 'groot', 'ruim', 'krap', 'beperkt',
+            'beter', 'slechter', 'piept', 'kraakt', 'rammelt',
+            'aangenaam', 'fijn', 'prettig', 'comfortabel', 'oncomfortabel'
+        }
+        
+        # Contextafhankelijke woorden (alleen behouden als ze zinvol zijn in context)
+        context_words = {'minder', 'meer'}
+        
+        # Split op zinnen (punt, uitroepteken, vraagteken)
+        sentences = re.split(r'[.!?]+', text.lower())
         key_points = []
         
-        for part in parts:
-            part = part.strip()
-            if not part or len(part) < 3:
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence or len(sentence) < 5:
                 continue
             
-            # Pas replacements toe
-            for old, new in replacements.items():
-                part = part.replace(old, new)
+            # Split op 'en' en ',' om potentieel verschillende onderwerpen te scheiden
+            segments = re.split(r'\s+(?:en|,)\s+', sentence)
             
-            # Verwijder vulsels
-            words = part.split()
-            # Filter alle vulwoorden eruit (behalve 'en' want die is al gebruikt voor splitsen)
-            words = [w for w in words if w not in filler_words and len(w) > 1]
-            
-            if words:
-                # Maak compacte zin
-                clean_part = ' '.join(words).strip()
-                # Alleen toevoegen als er content overblijft
-                if clean_part and len(clean_part) > 2:
-                    key_points.append(clean_part)
+            for segment in segments:
+                segment = segment.strip()
+                if not segment:
+                    continue
+                
+                # Zoek onderwerp in segment
+                words = segment.split()
+                filtered_words = []
+                current_subject = None
+                
+                for i, word in enumerate(words):
+                    clean_word = word.strip('.,!?;:')
+                    
+                    # Detecteer onderwerp
+                    if clean_word in subject_words:
+                        current_subject = clean_word
+                        filtered_words.append(clean_word)
+                        continue
+                    
+                    # Behoud belangrijke woorden
+                    if clean_word in important_words:
+                        filtered_words.append(clean_word)
+                        continue
+                    
+                    # Contextafhankelijke woorden: alleen behouden als volgend woord belangrijk is
+                    if clean_word in context_words:
+                        # Kijk naar volgend woord
+                        if i + 1 < len(words):
+                            next_word = words[i + 1].strip('.,!?;:')
+                            # Behoud alleen als volgend woord belangrijk of onderwerp is
+                            if next_word in important_words or next_word in subject_words or len(next_word) > 4:
+                                filtered_words.append(clean_word)
+                        continue
+                    
+                    # Skip filler woorden
+                    if clean_word in filler_words:
+                        continue
+                    
+                    # Behoud lange woorden
+                    if len(clean_word) > 3:
+                        filtered_words.append(clean_word)
+                
+                # Als er zinvolle woorden zijn, maak bullet point
+                if len(filtered_words) >= 2:
+                    clean_segment = ' '.join(filtered_words)
+                    # Kapitaliseer eerste letter
+                    clean_segment = clean_segment[0].upper() + clean_segment[1:] if clean_segment else ''
+                    if clean_segment and clean_segment not in key_points:
+                        key_points.append(clean_segment)
         
-        # Maximaal 3 bullets
+        # Als er geen punten zijn, toon verkorte tekst
         if not key_points:
-            return text[:50] + '...'
-        
-        # Neem eerste 3 belangrijkste punten
-        key_points = key_points[:3]
+            return text[:100] + '...' if len(text) > 100 else text
         
         # Return met bullets
         return '• ' + '<br>• '.join(key_points)
-        return '• ' + '<br>• '.join(key_points)
-
-        
-        if not summary:
-            # Als geen zinnen passen, neem eerste zin en kort in
-            return sentences[0][:max_length-3] + '...'
-        
-        result = '. '.join(summary)
-        if len(result) > max_length:
-            result = result[:max_length-3] + '...'
-        
-        return result
     
     def analyze_feedback_batch(self, feedback_list: List[Dict]) -> Dict:
         """
@@ -497,7 +530,10 @@ class FeedbackTopicExtractor:
                 'feedback_id': feedback.get('feedback_id'),
                 'tokens': tokens,
                 'text': text,
-                'scores': scores
+                'scores': scores,
+                'desk_number': feedback.get('desk_number'),
+                'building_name': feedback.get('building_name'),
+                'dienst_naam': feedback.get('dienst_naam')
             })
         
         # Bereken IDF over alle documenten
@@ -555,7 +591,10 @@ class FeedbackTopicExtractor:
                 'urgency_score': urgency,
                 'display_score': display_score,
                 'summary': summary,
-                'full_text': item['text']
+                'full_text': item['text'],
+                'desk_number': item.get('desk_number'),
+                'building_name': item.get('building_name'),
+                'dienst_naam': item.get('dienst_naam')
             })
         
         # Cluster feedback
@@ -774,14 +813,26 @@ def analyze_feedback_from_db(db_session) -> Dict:
     Returns:
         Analyse resultaten dictionary
     """
-    from app.models import Feedback
+    from app.models import Feedback, Reservation, Desk, Building
     
-    # Haal alle feedback op
-    feedback_records = db_session.query(Feedback).all()
+    # Haal alle feedback op met joined desk/building info
+    feedback_records = db_session.query(Feedback).join(
+        Reservation, Feedback.reservation_id == Reservation.res_id
+    ).join(
+        Desk, Reservation.desk_id == Desk.desk_id
+    ).join(
+        Building, Desk.building_id == Building.building_id
+    ).all()
     
     # Converteer naar dictionaries
     feedback_list = []
     for record in feedback_records:
+        # Bouw een leesbare building naam
+        building = record.reservation.desk.building
+        building_name = building.adress if building.adress else f"Gebouw {building.building_id}"
+        if building.floor:
+            building_name += f" (Verdieping {building.floor})"
+        
         feedback_list.append({
             'feedback_id': record.feedback_id,
             'reservation_id': record.reservation_id,
@@ -790,7 +841,10 @@ def analyze_feedback_from_db(db_session) -> Dict:
             'ruimte_score': record.ruimte_score,
             'stilte_score': record.stilte_score,
             'algemene_score': record.algemene_score,
-            'extra_opmerkingen': record.extra_opmerkingen
+            'extra_opmerkingen': record.extra_opmerkingen,
+            'desk_number': record.reservation.desk.desk_number,
+            'building_name': building_name,
+            'dienst_naam': record.reservation.desk.get_dienst_naam()
         })
     
     # Analyseer
