@@ -40,26 +40,26 @@
       <div class="metric-value">{{ analysis.total_feedback }}</div>
       <div class="metric-label">Totale feedback</div>
     </div>
-    <div class="metric">
+    <a href="#belangrijk-section" class="metric" style="text-decoration: none; color: inherit;">
       <div class="metric-value">
         {{ analysis.urgency_distribution.urgent + analysis.urgency_distribution.kritiek }}
       </div>
       <div class="metric-label">Belangrijk</div>
-    </div>
-    <div class="metric">
+    </a>
+    <a href="#voldoende-section" class="metric" style="text-decoration: none; color: inherit;">
       <div class="metric-value">{{ analysis.urgency_distribution.belangrijk }}</div>
       <div class="metric-label">Voldoende</div>
-    </div>
-    <div class="metric">
+    </a>
+    <a href="#uitstekend-section" class="metric" style="text-decoration: none; color: inherit;">
       <div class="metric-value">{{ analysis.urgency_distribution.positief }}</div>
       <div class="metric-label">Uitstekend</div>
-    </div>
+    </a>
   </div>
 
-  <!-- Urgent Feedback Section -->
-  <div class="feedback-section">
+  <!-- Belangrijk Feedback Section (>60 urgency) -->
+  <div class="feedback-section" id="belangrijk-section">
     <div class="section-header">
-      <h2>Belangrijke feedback</h2>
+      <h2>Belangrijk</h2>
       <span class="section-count">
         {{ analysis.urgent_feedback|length }} meldingen
       </span>
@@ -141,20 +141,21 @@
     {% endif %}
   </div>
 
-  <!-- Regular Feedback Section -->
+  <!-- Voldoende Feedback Section (40-60 urgency) -->
   {% if analysis.detailed_items %}
-    <div class="feedback-section">
+    <div class="feedback-section" id="voldoende-section">
       <div class="section-header">
-        <h2>Overige feedback</h2>
+        <h2>Voldoende</h2>
         <span class="section-count">
-          {% set regular_count = analysis.detailed_items|selectattr('urgency_score', '<=', 60)|list|length %}
-          {{ regular_count }} meldingen
+          {% set adequate_count = analysis.detailed_items|selectattr('urgency_score', '>=', 40)|selectattr('urgency_score', '<=', 60)|list|length %}
+          {{ adequate_count }} meldingen
         </span>
       </div>
 
-      <div class="feedback-list">
-        {% for item in analysis.detailed_items %}
-          {% if item.urgency_score <= 60 %}
+      {% set adequate_items = analysis.detailed_items|selectattr('urgency_score', '>=', 40)|selectattr('urgency_score', '<=', 60)|list %}
+      {% if adequate_items %}
+        <div class="feedback-list">
+          {% for item in adequate_items %}
             <div class="feedback-item {% if not item.get('is_reviewed') %}unread{% endif %}">
               <div class="feedback-left">
                 {% if not item.get('is_reviewed') %}
@@ -173,16 +174,21 @@
                       <span class="badge-new">Nieuw</span>
                     {% endif %}
                   </div>
-                  {% if not item.get('is_reviewed') %}
-                    <form
-                      action="{{ url_for('main.mark_feedback_reviewed', feedback_id=item.feedback_id) }}"
-                      method="POST"
-                      style="display: inline;"
-                    >
-                      <button type="submit" class="btn-text">Markeer als gelezen</button>
-                    </form>
-                  {% endif %}
+                  <div class="feedback-actions">
+                    {% if not item.get('is_reviewed') %}
+                      <form
+                        action="{{ url_for('main.mark_feedback_reviewed', feedback_id=item.feedback_id) }}"
+                        method="POST"
+                        style="display: inline;"
+                      >
+                        <button type="submit" class="btn-text">Markeer als gelezen</button>
+                      </form>
+                    {% else %}
+                      <span class="text-subtle">Gelezen</span>
+                    {% endif %}
+                  </div>
                 </div>
+
                 <div class="feedback-summary">{{ item.summary|safe }}</div>
 
                 {% if item.scores %}
@@ -214,9 +220,102 @@
                 {% endif %}
               </div>
             </div>
-          {% endif %}
-        {% endfor %}
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <p>Geen voldoende feedback op dit moment.</p>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- Uitstekend Feedback Section (<40 urgency) -->
+  {% if analysis.detailed_items %}
+    <div class="feedback-section" id="uitstekend-section">
+      <div class="section-header">
+        <h2>Uitstekend</h2>
+        <span class="section-count">
+          {% set excellent_count = analysis.detailed_items|selectattr('urgency_score', '<', 40)|list|length %}
+          {{ excellent_count }} meldingen
+        </span>
       </div>
+
+      {% set excellent_items = analysis.detailed_items|selectattr('urgency_score', '<', 40)|list %}
+      {% if excellent_items %}
+        <div class="feedback-list">
+          {% for item in excellent_items %}
+            <div class="feedback-item {% if not item.get('is_reviewed') %}unread{% endif %}">
+              <div class="feedback-left">
+                {% if not item.get('is_reviewed') %}
+                  <div class="unread-indicator"></div>
+                {% endif %}
+              </div>
+
+              <div class="feedback-main">
+                <div class="feedback-header">
+                  <div>
+                    <span class="urgency {% if item.urgency_score >= 80 %}critical{% elif item.urgency_score >= 60 %}high{% elif item.urgency_score >= 40 %}medium{% elif item.urgency_score >= 20 %}low{% else %}quality{% endif %}">
+                      Score: {{ item.display_score|int }}/100
+                    </span>
+                    <span class="feedback-id">#{{ item.feedback_id }}</span>
+                    {% if not item.get('is_reviewed') %}
+                      <span class="badge-new">Nieuw</span>
+                    {% endif %}
+                  </div>
+                  <div class="feedback-actions">
+                    {% if not item.get('is_reviewed') %}
+                      <form
+                        action="{{ url_for('main.mark_feedback_reviewed', feedback_id=item.feedback_id) }}"
+                        method="POST"
+                        style="display: inline;"
+                      >
+                        <button type="submit" class="btn-text">Markeer als gelezen</button>
+                      </form>
+                    {% else %}
+                      <span class="text-subtle">Gelezen</span>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="feedback-summary">{{ item.summary|safe }}</div>
+
+                {% if item.scores %}
+                  <div class="feedback-scores">
+                    {% for score_name, score_value in item.scores.items() %}
+                      {% if score_value %}
+                        <span class="score {% if score_value <= 2 %}low{% elif score_value == 3 %}medium{% else %}high{% endif %}">
+                          {{ score_name|capitalize }}: {{ score_value }}/5
+                        </span>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+
+                <div class="feedback-meta">
+                  {% for topic, relevance in item.topics[:3] %}
+                    <span class="tag">{{ topic }}</span>
+                  {% endfor %}
+                  <span class="sentiment {% if item.sentiment.sentiment_label == 'positief' %}positive{% elif item.sentiment.sentiment_label == 'negatief' %}negative{% else %}neutral{% endif %}">
+                    {{ item.sentiment.sentiment_label|capitalize }}
+                  </span>
+                </div>
+
+                {% if item.full_text %}
+                  <details class="feedback-details">
+                    <summary>Volledige melding</summary>
+                    <p>{{ item.full_text }}</p>
+                  </details>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <p>Geen uitstekende feedback op dit moment.</p>
+        </div>
+      {% endif %}
     </div>
   {% endif %}
 
@@ -262,6 +361,7 @@
     line-height: 1.5;
     color: var(--color-text);
     background-color: var(--color-bg);
+    scroll-behavior: smooth;
   }
 
   body {
@@ -364,6 +464,17 @@
     border-radius: var(--radius-md);
     padding: var(--spacing-md);
     text-align: center;
+    transition: all 0.2s ease;
+  }
+
+  .metric:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-accent);
+  }
+
+  a.metric {
+    cursor: pointer;
   }
 
   .metric-value {
