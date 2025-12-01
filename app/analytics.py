@@ -623,14 +623,32 @@ class FeedbackTopicExtractor:
             Lijst van insight strings
         """
         insights = []
+        total_items = len(analyzed_items)
         
-        # Top topics
+        # Minimale dataset waarschuwing (alleen bij < 2 items)
+        if total_items < 2:
+            insights.append("Nog te weinig feedback voor betrouwbare inzichten (minimaal 2 items nodig)")
+            return insights
+        
+        # Top topics (maar negeer 'algemeen' - dat is geen echt topic)
         if topics:
-            top_topic = topics.most_common(1)[0]
-            insights.append(
-                f"Het meest besproken onderwerp is '{top_topic[0]}' "
-                f"(voorkomt in {int(top_topic[1] * 100)}% van de feedback)"
-            )
+            # Filter 'algemeen' eruit
+            real_topics = [(topic, count) for topic, count in topics.most_common(5) if topic != 'algemeen']
+            
+            if real_topics:
+                top_topic = real_topics[0]
+                topic_count = int(top_topic[1])
+                topic_percentage = (topic_count / total_items) * 100
+                
+                # Bij kleine datasets (< 10): toon altijd als >= 2 items
+                # Bij grotere datasets: toon als >= 25%
+                min_items_needed = 2 if total_items < 10 else max(2, int(total_items * 0.25))
+                
+                if topic_count >= min_items_needed:
+                    insights.append(
+                        f"Het meest besproken onderwerp is '{top_topic[0]}' "
+                        f"(komt voor in {topic_count} van {total_items} feedback items, {topic_percentage:.0f}%)"
+                    )
         
         # Sentiment overzicht
         total_sentiment = sum(sentiments.values())
@@ -643,32 +661,72 @@ class FeedbackTopicExtractor:
             elif negative_pct > 40:
                 insights.append(f"Significant aantal negatieve reacties ({negative_pct:.1f}% negatief)")
         
-        # Score analyse
+        # Score analyse - alleen significante bevindingen
         for score_type, stats in score_stats.items():
             if stats['mean'] < 2.5:
                 insights.append(
-                    f"⚠️ Lage score voor {score_type}: gemiddeld {stats['mean']:.1f}/5"
+                    f"Lage score voor {score_type}: gemiddeld {stats['mean']:.1f}/5"
                 )
             elif stats['mean'] > 4.0:
                 insights.append(
-                    f"✓ Hoge score voor {score_type}: gemiddeld {stats['mean']:.1f}/5"
+                    f"Hoge score voor {score_type}: gemiddeld {stats['mean']:.1f}/5"
                 )
         
-        # Cluster insights
-        largest_cluster = max(clusters.items(), key=lambda x: len(x[1])) if clusters else None
-        if largest_cluster and len(largest_cluster[1]) > len(analyzed_items) * 0.3:
-            insights.append(
-                f"Opvallend veel feedback over '{largest_cluster[0]}' "
-                f"({len(largest_cluster[1])} items)"
-            )
+        # Cluster insights - alleen als significant EN niet 'algemeen'
+        if clusters:
+            # Filter 'algemeen' cluster eruit
+            real_clusters = {k: v for k, v in clusters.items() if k != 'algemeen'}
+            
+            if real_clusters:
+                largest_cluster = max(real_clusters.items(), key=lambda x: len(x[1]))
+                cluster_percentage = (len(largest_cluster[1]) / total_items) * 100
+                
+                # Bij kleine datasets: toon als >= 2 items
+                # Bij grote datasets: toon als > 40%
+                min_cluster_size = 2 if total_items < 10 else max(2, int(total_items * 0.4))
+                
+                if len(largest_cluster[1]) >= min_cluster_size:
+                    insights.append(
+                        f"Opvallend veel feedback over '{largest_cluster[0]}' "
+                        f"({len(largest_cluster[1])} van {total_items} items, {cluster_percentage:.0f}%)"
+                    )
         
-        # Variatie in scores
-        for score_type, stats in score_stats.items():
-            if stats['std'] > 1.5:
-                insights.append(
-                    f"Grote variatie in {score_type} scores (std: {stats['std']:.2f}) - "
-                    f"inconsistente ervaring tussen gebruikers"
-                )
+        # Variatie in scores - alleen bij voldoende data (>= 4 items)
+        if total_items >= 4:
+            for score_type, stats in score_stats.items():
+                if stats['std'] > 1.5:
+                    # Bereken range voor duidelijker beeld
+                    score_range = stats['max'] - stats['min']
+                    insights.append(
+                        f"Scores voor {score_type} lopen sterk uiteen "
+                        f"(van {stats['min']:.1f} tot {stats['max']:.1f} sterren) - "
+                        f"sommige gebruikers zeer tevreden, anderen niet"
+                    )
+        
+        # Fallback: als nog steeds geen insights, toon basis statistieken
+        if not insights:
+            # Toon gemiddelde scores als fallback
+            best_score = None
+            best_score_value = 0
+            worst_score = None
+            worst_score_value = 6
+            
+            for score_type, stats in score_stats.items():
+                if stats['mean'] > best_score_value:
+                    best_score_value = stats['mean']
+                    best_score = score_type
+                if stats['mean'] < worst_score_value:
+                    worst_score_value = stats['mean']
+                    worst_score = score_type
+            
+            if best_score:
+                insights.append(f"Beste score: {best_score} (gemiddeld {best_score_value:.1f}/5)")
+            if worst_score and worst_score != best_score:
+                insights.append(f"Laagste score: {worst_score} (gemiddeld {worst_score_value:.1f}/5)")
+            
+            # Als nog steeds geen insights, gebruik de algemene boodschap
+            if not insights:
+                insights.append(f"Totaal {total_items} feedback items ontvangen en geanalyseerd")
         
         return insights
     
