@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reservatie Aanmaken - Admin</title>
+</head>
+<body>
+    <h1>Nieuwe Reservatie Aanmaken</h1>
+    
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                <p style="color: red;">{{ msg }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <form method="POST">
+        <label>Gebruiker:</label>
+        <select name="user_id" required>
+            <option value="">-- Selecteer gebruiker --</option>
+            {% for u in all_users %}
+                <option value="{{ u.user_id }}">{{ u.user_name }} {{ u.user_last_name }} ({{ u.user_email }})</option>
+            {% endfor %}
+        </select><br>
+        
+        <label>Gebouw:</label>
+        <select name="building_id" id="building_select" required>
+            <option value="">-- Selecteer gebouw --</option>
+            {% for b in buildings %}
+                <option value="{{ b.building_id }}">{{ b.adress }}</option>
+            {% endfor %}
+        </select><br>
+        
+        <label>Bureau:</label>
+        <select name="desk_id" id="desk_select" required>
+            <option value="">-- Eerst gebouw selecteren --</option>
+        </select><br>
+        
+        <label>Datum:</label>
+        <input type="date" name="date" required><br>
+        
+        <label>Starttijd:</label>
+        <input type="time" name="start_time" required><br>
+        
+        <label>Eindtijd:</label>
+        <input type="time" name="end_time" required><br>
+        
+        <button type="submit">Reservatie Aanmaken</button>
+        <a href="{{ url_for('main.admin_dashboard') }}">Annuleren</a>
+    </form>
+    
+    <script>
+        // Dynamic desk loading wanneer gebouw gekozen wordt
+        document.getElementById('building_select').addEventListener('change', function() {
+            const buildingId = this.value;
+            const deskSelect = document.getElementById('desk_select');
+            
+            if (!buildingId) {
+                deskSelect.innerHTML = '<option value="">-- Eerst gebouw selecteren --</option>';
+                return;
+            }
+            
+            // Fetch desks for selected building
+            fetch(`/api/desks?building_id=${buildingId}`)
+                .then(res => res.json())
+                .then(desks => {
+                    deskSelect.innerHTML = '<option value="">-- Selecteer bureau --</option>';
+                    desks.forEach(desk => {
+                        const option = document.createElement('option');
+                        option.value = desk.desk_id;
+                        option.textContent = `Bureau ${desk.desk_number}`;
+                        deskSelect.appendChild(option);
+                    });
+                })
+                .catch(err => {
+                    console.error('Error loading desks:', err);
+                    deskSelect.innerHTML = '<option value="">Fout bij laden bureaus</option>';
+                });
+        });
+    </script>
+</body>
+</html>

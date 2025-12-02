@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard - Colruyt Reservaties</title>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <p>Ingelogd als: {{ user.user_name }} {{ user.user_last_name }} (Admin)</p>
+    
+    <a href="{{ url_for('home') }}">Terug naar Home</a>
+    <a href="{{ url_for('main.admin_create_reservation') }}">Nieuwe Reservatie Aanmaken</a>
+    
+    <h2>Alle Toekomstige Reservaties</h2>
+    
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+                <p style="color: blue;">{{ msg }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    {% if reservations %}
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Gebruiker</th>
+                    <th>Email</th>
+                    <th>Gebouw</th>
+                    <th>Bureau</th>
+                    <th>Datum</th>
+                    <th>Starttijd</th>
+                    <th>Eindtijd</th>
+                    <th>Acties</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for res in reservations %}
+                <tr>
+                    <td>{{ res.user_name }}</td>
+                    <td>{{ res.user_email }}</td>
+                    <td>{{ res.building_adress }}</td>
+                    <td>{{ res.desk_number }}</td>
+                    <td>{{ res.starttijd.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ res.starttijd.strftime('%H:%M') }}</td>
+                    <td>{{ res.eindtijd.strftime('%H:%M') }}</td>
+                    <td>
+                        <a href="{{ url_for('main.admin_edit_reservation', res_id=res.res_id) }}">Wijzigen</a>
+                        
+                        <form method="POST" action="{{ url_for('main.admin_delete_reservation', res_id=res.res_id) }}" style="display:inline;">
+                            <button type="submit" onclick="return confirm('Weet je zeker dat je deze reservatie wilt verwijderen?')">Verwijderen</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Geen toekomstige reservaties gevonden.</p>
+    {% endif %}
+</body>
+</html>

@@ -20,6 +20,11 @@
                     {% endif %}
                     <a href="{{ url_for('main.reserve') }}">Nieuwe reservatie</a>
                     <a href="{{ url_for('main.mijn_reservaties') }}">Mijn reservaties</a>
+                    {% if user_obj and user_obj.is_admin() %}
+                        <a href="{{ url_for('main.admin_dashboard') }}" class="nav-link">
+                            Admin Dashboard
+                        </a>
+                    {% endif %}
                     <a href="{{ url_for('logout') }}">Afmelden</a>
                 {% else %}
                     <a href="{{ url_for('login') }}">Aanmelden</a>

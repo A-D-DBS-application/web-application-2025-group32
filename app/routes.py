@@ -5,6 +5,9 @@ except Exception:
     from models import db, User, Building, Desk, Reservation, Feedback
 from datetime import datetime
 from sqlalchemy import and_, text
+from app.auth import require_admin
+from flask import jsonify
+
 
 main = Blueprint("main", __name__)
 
@@ -577,3 +580,225 @@ def mark_feedback_reviewed(feedback_id):
     except Exception as e:
         flash(f"Fout bij markeren van feedback: {str(e)}", "danger")
         return redirect(url_for('main.feedback_analysis'))
+    
+
+
+@main.route('/admin/dashboard')
+@require_admin
+def admin_dashboard():
+    """Admin dashboard - overzicht van alle reservaties"""
+    user = get_current_user()
+    
+    try:
+        from datetime import datetime
+        now = datetime.now()
+        
+        # Alle toekomstige reservaties
+        upcoming_reservations = Reservation.query.filter(
+            Reservation.starttijd >= now
+        ).order_by(Reservation.starttijd).all()
+        
+        # Voeg extra info toe aan elke reservatie
+        for res in upcoming_reservations:
+            if res.desk and res.desk.building:
+                res.building_adress = res.desk.building.adress
+                res.desk_number = res.desk.desk_number
+            else:
+                res.building_adress = 'N/A'
+                res.desk_number = 'N/A'
+            
+            # Voeg user info toe
+            res.user_name = f"{res.user.user_name} {res.user.user_last_name}"
+            res.user_email = res.user.user_email
+            
+    except Exception as e:
+        flash(f"Fout bij ophalen reservaties: {str(e)}")
+        upcoming_reservations = []
+    
+    return render_template('admin_dashboard.html', 
+                         user=user, 
+                         reservations=upcoming_reservations)
+
+
+@main.route('/admin/reservation/delete/<int:res_id>', methods=['POST'])
+@require_admin
+def admin_delete_reservation(res_id):
+    """Admin kan elke reservatie verwijderen"""
+    user = get_current_user()
+    
+    try:
+        reservation = Reservation.query.filter_by(res_id=res_id).first()
+        if not reservation:
+            flash("Reservatie niet gevonden.")
+            return redirect(url_for('main.admin_dashboard'))
+        
+        # Haal user info op voor melding
+        res_user = reservation.user
+        user_name = f"{res_user.user_name} {res_user.user_last_name}"
+        
+        db.session.delete(reservation)
+        db.session.commit()
+        flash(f"Reservatie van {user_name} succesvol verwijderd.")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Fout bij verwijderen: {str(e)}")
+    
+    return redirect(url_for('main.admin_dashboard'))
+
+
+@main.route('/admin/reservation/edit/<int:res_id>', methods=['GET', 'POST'])
+@require_admin
+def admin_edit_reservation(res_id):
+    """Admin kan reservatie wijzigen"""
+    user = get_current_user()
+    
+    try:
+        reservation = Reservation.query.filter_by(res_id=res_id).first()
+    except Exception:
+        reservation = None
+    
+    if not reservation:
+        flash("Reservatie niet gevonden.")
+        return redirect(url_for('main.admin_dashboard'))
+    
+    if request.method == 'POST':
+        try:
+            # Haal nieuwe waarden op
+            date_str = request.form.get('date')
+            start_str = request.form.get('start_time')
+            end_str = request.form.get('end_time')
+            
+            chosen_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            start_time_obj = datetime.strptime(start_str, "%H:%M").time()
+            end_time_obj = datetime.strptime(end_str, "%H:%M").time()
+            
+            start_datetime = datetime.combine(chosen_date, start_time_obj)
+            end_datetime = datetime.combine(chosen_date, end_time_obj)
+            
+            if start_time_obj >= end_time_obj:
+                flash("Eindtijd moet later zijn dan starttijd.")
+                return redirect(url_for('main.admin_edit_reservation', res_id=res_id))
+            
+            # Check overlap met andere reservaties (behalve deze zelf)
+            overlapping = Reservation.query.filter(
+                Reservation.desk_id == reservation.desk_id,
+                Reservation.res_id != res_id,
+                Reservation.starttijd < end_datetime,
+                start_datetime < Reservation.eindtijd
+            ).first()
+            
+            if overlapping:
+                flash("Dit tijdslot is al geboekt voor dit bureau!")
+                return redirect(url_for('main.admin_edit_reservation', res_id=res_id))
+            
+            # Update reservatie
+            reservation.starttijd = start_datetime
+            reservation.eindtijd = end_datetime
+            db.session.commit()
+            
+            flash("Reservatie succesvol gewijzigd.")
+            return redirect(url_for('main.admin_dashboard'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Fout bij wijzigen: {str(e)}")
+            return redirect(url_for('main.admin_edit_reservation', res_id=res_id))
+    
+    # GET: toon formulier
+    return render_template('admin_edit_reservation.html', 
+                         user=user, 
+                         reservation=reservation)
+
+
+@main.route('/admin/reservation/create', methods=['GET', 'POST'])
+@require_admin
+def admin_create_reservation():
+    """Admin kan reservatie aanmaken voor een gebruiker"""
+    user = get_current_user()
+    
+    # Haal alle users en buildings op
+    try:
+        all_users = User.query.order_by(User.user_name).all()
+        all_buildings = Building.query.all()
+    except Exception:
+        all_users = []
+        all_buildings = []
+    
+    if request.method == 'POST':
+        try:
+            selected_user_id = request.form.get('user_id')
+            building_id = request.form.get('building_id')
+            desk_id = request.form.get('desk_id')
+            date_str = request.form.get('date')
+            start_str = request.form.get('start_time')
+            end_str = request.form.get('end_time')
+            
+            # Validatie
+            if not all([selected_user_id, desk_id, date_str, start_str, end_str]):
+                flash("Vul alle velden in.")
+                return redirect(url_for('main.admin_create_reservation'))
+            
+            chosen_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            start_time_obj = datetime.strptime(start_str, "%H:%M").time()
+            end_time_obj = datetime.strptime(end_str, "%H:%M").time()
+            
+            start_datetime = datetime.combine(chosen_date, start_time_obj)
+            end_datetime = datetime.combine(chosen_date, end_time_obj)
+            
+            if start_time_obj >= end_time_obj:
+                flash("Eindtijd moet later zijn dan starttijd.")
+                return redirect(url_for('main.admin_create_reservation'))
+            
+            # Check overlap
+            overlapping = Reservation.query.filter(
+                Reservation.desk_id == desk_id,
+                Reservation.starttijd < end_datetime,
+                start_datetime < Reservation.eindtijd
+            ).first()
+            
+            if overlapping:
+                flash("Dit bureau is al geboekt in dit tijdslot!")
+                return redirect(url_for('main.admin_create_reservation'))
+            
+            # Maak reservatie
+            new_reservation = Reservation(
+                user_id=selected_user_id,
+                desk_id=desk_id,
+                starttijd=start_datetime,
+                eindtijd=end_datetime
+            )
+            db.session.add(new_reservation)
+            db.session.commit()
+            
+            flash("Reservatie succesvol aangemaakt!")
+            return redirect(url_for('main.admin_dashboard'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Fout bij aanmaken: {str(e)}")
+            return redirect(url_for('main.admin_create_reservation'))
+    
+    # GET: toon formulier
+    return render_template('admin_create_reservation.html', 
+                         user=user, 
+                         all_users=all_users,
+                         buildings=all_buildings)
+
+
+@main.route('/api/desks')
+def api_desks():
+    """API endpoint om bureaus op te halen per gebouw"""
+    building_id = request.args.get('building_id')
+    
+    if not building_id:
+        return jsonify([])
+    
+    try:
+        desks = Desk.query.filter_by(building_id=building_id).all()
+        return jsonify([{
+            'desk_id': d.desk_id,
+            'desk_number': d.desk_number
+        } for d in desks])
+    except Exception:
+        return jsonify([])
