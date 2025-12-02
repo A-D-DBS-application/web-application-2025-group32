@@ -780,25 +780,19 @@ class FeedbackTopicExtractor:
             Dictionary met counts per urgentie level
         """
         distribution = {
-            'kritiek': 0,      # 80-100
-            'urgent': 0,       # 60-79
-            'belangrijk': 0,   # 40-59
-            'normaal': 0,      # 20-39
-            'positief': 0      # 0-19
+            'onvoldoende': 0,  # 51-100
+            'voldoende': 0,    # 25-50
+            'uitstekend': 0    # 0-24
         }
         
         for item in sorted_feedback:
             urgency = item.get('urgency_score', 0)
-            if urgency >= 80:
-                distribution['kritiek'] += 1
-            elif urgency >= 60:
-                distribution['urgent'] += 1
-            elif urgency >= 40:
-                distribution['belangrijk'] += 1
-            elif urgency >= 20:
-                distribution['normaal'] += 1
+            if urgency >= 51:
+                distribution['onvoldoende'] += 1
+            elif urgency >= 25:
+                distribution['voldoende'] += 1
             else:
-                distribution['positief'] += 1
+                distribution['uitstekend'] += 1
         
         return distribution
 

@@ -40,26 +40,26 @@
       <div class="metric-value">{{ analysis.total_feedback }}</div>
       <div class="metric-label">Totale feedback</div>
     </div>
-    <a href="#belangrijk-section" class="metric" style="text-decoration: none; color: inherit;">
+    <a href="#onvoldoende-section" class="metric" style="text-decoration: none; color: inherit;">
       <div class="metric-value">
-        {{ analysis.urgency_distribution.urgent + analysis.urgency_distribution.kritiek }}
+        {{ analysis.urgency_distribution.onvoldoende }}
       </div>
-      <div class="metric-label">Belangrijk</div>
+      <div class="metric-label">Onvoldoende</div>
     </a>
     <a href="#voldoende-section" class="metric" style="text-decoration: none; color: inherit;">
-      <div class="metric-value">{{ analysis.urgency_distribution.belangrijk }}</div>
+      <div class="metric-value">{{ analysis.urgency_distribution.voldoende }}</div>
       <div class="metric-label">Voldoende</div>
     </a>
     <a href="#uitstekend-section" class="metric" style="text-decoration: none; color: inherit;">
-      <div class="metric-value">{{ analysis.urgency_distribution.positief }}</div>
+      <div class="metric-value">{{ analysis.urgency_distribution.uitstekend }}</div>
       <div class="metric-label">Uitstekend</div>
     </a>
   </div>
 
-  <!-- Belangrijk Feedback Section (>60 urgency) -->
-  <div class="feedback-section" id="belangrijk-section">
+  <!-- Onvoldoende Feedback Section (51-100 urgency) -->
+  <div class="feedback-section" id="onvoldoende-section">
     <div class="section-header">
-      <h2>Belangrijk</h2>
+      <h2>Onvoldoende</h2>
       <span class="section-count">
         {{ analysis.urgent_feedback|length }} meldingen
       </span>
@@ -140,12 +140,12 @@
       </div>
     {% else %}
       <div class="empty-state">
-        <p>Geen belangrijke feedback op dit moment.</p>
+        <p>Geen onvoldoende feedback op dit moment.</p>
       </div>
     {% endif %}
   </div>
 
-  <!-- Voldoende Feedback Section (40-60 urgency) -->
+  <!-- Voldoende Feedback Section (25-50 urgency) -->
   {% if analysis.detailed_items %}
     <div class="feedback-section" id="voldoende-section">
       <div class="section-header">
