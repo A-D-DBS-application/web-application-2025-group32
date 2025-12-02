@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}Bureaubeheer{% endblock %}
+
+{% block hero %}
+  <h1 style="margin:0;font-size:2.2rem">Bureaubeheer</h1>
+  <p style="margin:8px 0 0 0;opacity:0.95">Beheer bureaus en hun eigenschappen</p>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:1400px;margin:0 auto">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        {% if category == 'success' %}
+          <div style="background:#e8f5e9;border-left:4px solid #4caf50;padding:16px;margin-bottom:24px;border-radius:8px">
+            <p style="margin:0;color:#2e7d32">{{ msg }}</p>
+          </div>
+        {% else %}
+          <div style="background:#ffebee;border-left:4px solid #f44336;padding:16px;margin-bottom:24px;border-radius:8px">
+            <p style="margin:0;color:#c62828">{{ msg }}</p>
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card" style="margin-bottom:24px">
+    <h2 style="margin:0 0 16px 0;font-size:1.5rem;color:var(--primary)">Overzicht</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+      <div style="padding:20px;border:2px solid #e5e7eb;border-radius:8px">
+        <div style="font-size:2rem;font-weight:bold;margin-bottom:4px;color:var(--primary)">{{ desks|length }}</div>
+        <div style="color:#64748b">Totaal werkposten</div>
+      </div>
+      <div style="padding:20px;border:2px solid #e5e7eb;border-radius:8px">
+        <div style="font-size:2rem;font-weight:bold;margin-bottom:4px;color:var(--primary)">{{ diensten|length }}</div>
+        <div style="color:#64748b">Actieve diensten</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="margin:0;font-size:1.5rem;color:var(--primary)">Alle Werkposten</h2>
+      <a href="{{ url_for('main.admin_dashboard', add_new=1) }}" class="btn" style="padding:10px 20px;text-decoration:none;display:inline-block;background:#4caf50">
+        + Nieuw bureau toevoegen
+      </a>
+    </div>
+    
+    {% if edit_mode and edit_desk_id %}
+      <div style="background:#fff3cd;border-left:4px solid #ffc107;padding:16px;margin-bottom:20px;border-radius:8px">
+        <p style="margin:0;color:#856404;font-weight:500">Wijzigingsmodus actief voor bureau {{ edit_desk_number }}</p>
+      </div>
+    {% endif %}
+    
+    {% if add_new %}
+      <div style="background:#e8f5e9;border:2px solid #4caf50;padding:24px;margin-bottom:24px;border-radius:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h3 style="margin:0;color:#2e7d32;font-size:1.2rem">Nieuw Bureau Toevoegen</h3>
+          <a href="{{ url_for('main.admin_dashboard') }}" style="color:#2e7d32;text-decoration:none;font-weight:500">✕ Annuleren</a>
+        </div>
+        
+        <form method="POST" action="{{ url_for('main.admin_create_desk') }}" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+          <!-- Bureau nummer -->
+          <div>
+            <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Bureau nummer *</label>
+            <input type="number" name="desk_number" required min="1" step="1" placeholder="bijv. 1"
+                   style="padding:8px;border:1px solid #4caf50;border-radius:6px;width:100%;font-size:0.9rem">
+            <small style="color:#64748b;font-size:0.75rem">Alleen positieve cijfers vanaf 1</small>
+          </div>
+          
+          <!-- Gebouw -->
+          <div>
+            <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Gebouw *</label>
+            <select name="building_id" id="building-new" onchange="toggleOtherInput(this, 'building-other-new')" required
+                    style="padding:8px 12px;border:1px solid #4caf50;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+              <option value="">-- Selecteer gebouw --</option>
+              {% for building in buildings %}
+                <option value="{{ building.id }}">{{ building.naam }}</option>
+              {% endfor %}
+              <option value="other">Andere...</option>
+            </select>
+            <input type="text" name="building_other" id="building-other-new" placeholder="Nieuw gebouw naam"
+                   style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
+          </div>
+          
+          <!-- Scherm -->
+          <div>
+            <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Scherm</label>
+            <select name="screen" id="screen-new" onchange="toggleOtherInput(this, 'screen-other-new')"
+                    style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+              <option value="">-- Geen --</option>
+              {% for screen in screens %}
+                <option value="{{ screen }}">{{ screen }}</option>
+              {% endfor %}
+              <option value="other">Andere...</option>
+            </select>
+            <input type="text" name="screen_other" id="screen-other-new" placeholder="Nieuw scherm type"
+                   style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
+          </div>
+          
+          <!-- Stoel -->
+          <div>
+            <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Stoel</label>
+            <select name="chair" id="chair-new" onchange="toggleOtherInput(this, 'chair-other-new')"
+                    style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+              <option value="">-- Geen --</option>
+              {% for chair in chairs %}
+                <option value="{{ chair }}">{{ chair }}</option>
+              {% endfor %}
+              <option value="other">Andere...</option>
+            </select>
+            <input type="text" name="chair_other" id="chair-other-new" placeholder="Nieuw stoel type"
+                   style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
+          </div>
+          
+          <!-- Dienst -->
+          <div>
+            <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Dienst</label>
+            <select name="dienst_id" 
+                    style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+              <option value="None">Geen dienst</option>
+              {% for dienst in diensten %}
+                <option value="{{ dienst.id }}">{{ dienst.naam }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <!-- Submit button -->
+          <div style="grid-column:1/-1;display:flex;gap:8px;margin-top:8px">
+            <button type="submit" class="btn" style="padding:12px 24px;background:#4caf50;white-space:nowrap;font-weight:600">
+              Bureau Toevoegen
+            </button>
+            <a href="{{ url_for('main.admin_dashboard') }}" class="btn" style="padding:12px 24px;background:#94a3b8;text-decoration:none;white-space:nowrap">
+              Annuleren
+            </a>
+          </div>
+        </form>
+      </div>
+    {% endif %}
+    
+    {% if desks %}
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:var(--primary);color:white">
+              <th style="padding:12px 16px;text-align:left;font-weight:600;border-radius:8px 0 0 0">Bureau</th>
+              <th style="padding:12px 16px;text-align:left;font-weight:600">Gebouw</th>
+              <th style="padding:12px 16px;text-align:left;font-weight:600">Scherm</th>
+              <th style="padding:12px 16px;text-align:left;font-weight:600">Stoel</th>
+              <th style="padding:12px 16px;text-align:left;font-weight:600">Dienst</th>
+              <th style="padding:12px 16px;text-align:center;font-weight:600;border-radius:0 8px 0 0">Acties</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for desk in desks %}
+            {% if edit_mode and edit_desk_id == desk.desk_id %}
+            <tr id="desk-{{ desk.desk_id }}" style="border-bottom:1px solid #e5e7eb;background:#fffbeb">
+            {% else %}
+            <tr id="desk-{{ desk.desk_id }}" style="border-bottom:1px solid #e5e7eb">
+            {% endif %}
+              <td style="padding:16px;font-weight:600;color:var(--primary)">{{ desk.desk_number }}</td>
+              <td style="padding:16px">{{ desk.building_adress }}</td>
+              
+              {% if edit_mode and edit_desk_id == desk.desk_id %}
+                <!-- Edit mode form -->
+                <td style="padding:16px" colspan="4">
+                  <form method="POST" action="{{ url_for('main.admin_update_desk', desk_id=desk.desk_id) }}" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+                    
+                    <!-- Bureau nummer -->
+                    <div>
+                      <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Bureau nummer</label>
+                      <input type="number" name="desk_number" value="{{ desk.desk_number }}" required min="1" step="1"
+                             style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem">
+                    </div>
+                    
+                    <!-- Gebouw -->
+                    <div>
+                      <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Gebouw</label>
+                      <select name="building_id" id="building-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'building-other-{{ desk.desk_id }}')"
+                              style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+                        {% for building in buildings %}
+                          <option value="{{ building.id }}" {% if desk.building_id == building.id %}selected{% endif %}>
+                            {{ building.naam }}
+                          </option>
+                        {% endfor %}
+                        <option value="other">Andere...</option>
+                      </select>
+                      <input type="text" name="building_other" id="building-other-{{ desk.desk_id }}" placeholder="Nieuw gebouw naam"
+                             style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
+                    </div>
+                    
+                    <!-- Scherm -->
+                    <div>
+                      <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Scherm</label>
+                      <select name="screen" id="screen-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'screen-other-{{ desk.desk_id }}')"
+                              style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+                        {% for screen in screens %}
+                          <option value="{{ screen }}" {% if desk.screen|lower == screen|lower %}selected{% endif %}>
+                            {{ screen }}
+                          </option>
+                        {% endfor %}
+                        <option value="other">Andere...</option>
+                      </select>
+                      <input type="text" name="screen_other" id="screen-other-{{ desk.desk_id }}" placeholder="Nieuw scherm type"
+                             style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
+                    </div>
+                    
+                    <!-- Stoel -->
+                    <div>
+                      <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Stoel</label>
+                      <select name="chair" id="chair-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'chair-other-{{ desk.desk_id }}')"
+                              style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+                        {% for chair in chairs %}
+                          <option value="{{ chair }}" {% if desk.chair|lower == chair|lower %}selected{% endif %}>
+                            {{ chair }}
+                          </option>
+                        {% endfor %}
+                        <option value="other">Andere...</option>
+                      </select>
+                      <input type="text" name="chair_other" id="chair-other-{{ desk.desk_id }}" placeholder="Nieuw stoel type"
+                             style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
+                    </div>
+                    
+                    <!-- Dienst -->
+                    <div>
+                      <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Dienst</label>
+                      <select name="dienst_id" 
+                              style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+                        <option value="None" {% if not desk.dienst_id %}selected{% endif %}>Geen dienst</option>
+                        {% for dienst in diensten %}
+                          <option value="{{ dienst.id }}" {% if desk.dienst_id == dienst.id %}selected{% endif %}>
+                            {{ dienst.naam }}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    
+                    <!-- Buttons -->
+                    <div style="grid-column:1/-1;display:flex;gap:8px;margin-top:8px">
+                      <button type="submit" class="btn" style="padding:10px 20px;background:#4caf50;white-space:nowrap">
+                        Opslaan
+                      </button>
+                      <a href="{{ url_for('main.admin_dashboard', _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:10px 20px;background:#94a3b8;text-decoration:none;white-space:nowrap">
+                        Annuleren
+                      </a>
+                    </div>
+                  </form>
+                </td>
+              {% else %}
+                <!-- Read-only view -->
+                <td style="padding:16px;color:#64748b">{{ desk.screen }}</td>
+                <td style="padding:16px;color:#64748b">{{ desk.chair }}</td>
+                <td style="padding:16px">
+                  {% if desk.dienst_id %}
+                    <span style="background:#e8f5e9;color:#2e7d32;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:500">
+                      {{ desk.dienst_naam }}
+                    </span>
+                  {% else %}
+                    <span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:500">
+                      Geen dienst
+                    </span>
+                  {% endif %}
+                </td>
+                <td style="padding:16px;text-align:center">
+                  <a href="{{ url_for('main.admin_dashboard', edit=desk.desk_id, _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:8px 16px;margin-right:8px;text-decoration:none;display:inline-block">
+                    Wijzigen
+                  </a>
+                  {% if confirm_delete and confirm_delete == desk.desk_id %}
+                    <form method="POST" action="{{ url_for('main.admin_delete_desk', desk_id=desk.desk_id) }}" style="display:inline-block">
+                      <button type="submit" class="btn" style="padding:8px 16px;background:#f44336;margin-right:4px">
+                        Bevestig verwijderen
+                      </button>
+                      <a href="{{ url_for('main.admin_dashboard') }}" class="btn" style="padding:6px 12px;background:#94a3b8;text-decoration:none;font-size:0.85rem">
+                        Annuleer
+                      </a>
+                    </form>
+                  {% else %}
+                    <a href="{{ url_for('main.admin_dashboard', delete=desk.desk_id) }}" class="btn" style="padding:8px 16px;background:#f44336;text-decoration:none;display:inline-block">
+                      Verwijder
+                    </a>
+                  {% endif %}
+                </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="text-align:center;padding:40px;color:#64748b">
+        <p style="font-size:1.1rem;margin:0">Geen werkposten gevonden in de database.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function toggleOtherInput(selectElement, inputId) {
+  const inputElement = document.getElementById(inputId);
+  if (selectElement.value === 'other') {
+    inputElement.style.display = 'block';
+    inputElement.required = true;
+  } else {
+    inputElement.style.display = 'none';
+    inputElement.required = false;
+    inputElement.value = '';
+  }
+}
+
+// Scroll naar edit row met offset zodat het in het midden van scherm komt
+window.addEventListener('DOMContentLoaded', function() {
+  const hash = window.location.hash;
+  if (hash) {
+    const element = document.querySelector(hash);
+    if (element) {
+      // Wacht kort zodat pagina volledig geladen is
+      setTimeout(function() {
+        const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+        const offsetPosition = elementPosition - (window.innerHeight / 2) + (element.offsetHeight / 2);
+        
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }
+  }
+});
+</script>
+
+{% endblock %}

@@ -167,6 +167,26 @@ def available():
     # Query: alle bureaus, maar filteren op ZOWEL adress ALS floor (optioneel)
     q = Desk.query
     
+    # Filter op dienst: gebruiker ziet alleen werkposten van zijn eigen dienst
+    # Admins zien alle werkposten
+    if user and not user.is_admin():
+        # Haal dienst_id op van gebruiker (gebaseerd op user_afdeling)
+        user_afdeling = user.user_afdeling
+        
+        # Mapping van user_afdeling naar dienst_id
+        afdeling_to_dienst = {
+            'Marketing': 1,
+            'IT': 3,
+            'Sales': 5
+        }
+        
+        user_dienst_id = afdeling_to_dienst.get(user_afdeling)
+        
+        if user_dienst_id:
+            # Filter alleen desks met deze dienst_id OF desks zonder dienst (voor backwards compatibility)
+            q = q.filter((Desk.dienst_id == user_dienst_id) | (Desk.dienst_id == None))
+        # Als user_afdeling niet herkend wordt, toon alle desks (backwards compatibility)
+    
     # Filter op building: zoek building die matcht met ZOWEL adress ALS floor (alleen als ingevuld)
     # Check of de waarden niet leeg zijn
     has_building = building_adress and building_adress.strip()
@@ -580,44 +600,287 @@ def mark_feedback_reviewed(feedback_id):
     except Exception as e:
         flash(f"Fout bij markeren van feedback: {str(e)}", "danger")
         return redirect(url_for('main.feedback_analysis'))
-    
 
 
 @main.route('/admin/dashboard')
 @require_admin
 def admin_dashboard():
-    """Admin dashboard - overzicht van alle reservaties"""
+    """Admin dashboard - werkposten beheren en koppelen aan diensten"""
+    user = get_current_user()
+    
+    # Check voor edit mode, delete confirmation, en add new parameters
+    edit_desk_id = request.args.get('edit', type=int)
+    confirm_delete = request.args.get('delete', type=int)
+    add_new = request.args.get('add_new', type=int)
+    
+    try:
+        # Haal alle desks op met building info
+        desks = Desk.query.join(Building).order_by(Building.adress, Desk.desk_number).all()
+        
+        # Haal alle unieke gebouwen op (distinct op adress om duplicaten te voorkomen)
+        buildings_query = db.session.query(Building.adress, Building.building_id).distinct(Building.adress).order_by(Building.adress).all()
+        buildings_list = [{'id': b.building_id, 'naam': b.adress} for b in buildings_query]
+        
+        # Haal alle unieke scherm types op uit de database
+        screens_query = db.session.query(Desk.screen).filter(Desk.screen.isnot(None)).distinct().all()
+        screens_raw = [s[0] for s in screens_query if s[0]]
+        # Custom volgorde: Single, Dual, Triple, dan de rest alfabetisch
+        screen_order = ['single', 'dual', 'triple']
+        screens_ordered = []
+        for screen in screen_order:
+            # Match op basis van 'bevat' in plaats van exacte match
+            matching = [s for s in screens_raw if screen in s.lower()]
+            if matching:
+                screens_ordered.append(matching[0].capitalize())
+                screens_raw = [s for s in screens_raw if screen not in s.lower()]
+        # Voeg overige toe (alfabetisch, met hoofdletter)
+        screens_ordered.extend(sorted([s.capitalize() for s in screens_raw]))
+        screens_list = screens_ordered
+        
+        # Haal alle unieke stoel types op uit de database
+        chairs_query = db.session.query(Desk.chair).filter(Desk.chair.isnot(None)).distinct().all()
+        chairs_raw = [c[0] for c in chairs_query if c[0]]
+        # Custom volgorde: Standard, Standing, Ergonomic, dan de rest alfabetisch
+        chair_order = ['standard', 'standing', 'ergonomic']
+        chairs_ordered = []
+        for chair in chair_order:
+            matching = [c for c in chairs_raw if c.lower() == chair]
+            if matching:
+                chairs_ordered.append(matching[0].capitalize())
+                chairs_raw = [c for c in chairs_raw if c.lower() != chair]
+        # Voeg overige toe (alfabetisch, met hoofdletter)
+        chairs_ordered.extend(sorted([c.capitalize() for c in chairs_raw]))
+        chairs_list = chairs_ordered
+        
+        # Voeg extra info toe
+        desk_list = []
+        edit_desk_number = None
+        
+        for desk in desks:
+            desk_info = {
+                'desk_id': desk.desk_id,
+                'desk_number': desk.desk_number,
+                'building_adress': desk.building.adress if desk.building else 'N/A',
+                'building_id': desk.building_id,
+                'dienst_id': desk.dienst_id,
+                'dienst_naam': desk.get_dienst_naam(),
+                'screen': desk.screen or 'Niet gespecificeerd',
+                'chair': desk.chair or 'Niet gespecificeerd'
+            }
+            desk_list.append(desk_info)
+            
+            # Bewaar desk number voor edit mode banner
+            if edit_desk_id and desk.desk_id == edit_desk_id:
+                edit_desk_number = desk.desk_number
+        
+        # Lijst van beschikbare diensten
+        diensten = [
+            {'id': 1, 'naam': 'Marketing'},
+            {'id': 3, 'naam': 'IT'},
+            {'id': 5, 'naam': 'Sales'}
+        ]
+        
+    except Exception as e:
+        flash(f"Fout bij ophalen werkposten: {str(e)}", "danger")
+        desk_list = []
+        diensten = []
+        buildings_list = []
+        screens_list = []
+        chairs_list = []
+        edit_desk_number = None
+    
+    return render_template('admin_bureaubeheer.html', 
+                         user=user, 
+                         desks=desk_list,
+                         diensten=diensten,
+                         buildings=buildings_list,
+                         screens=screens_list,
+                         chairs=chairs_list,
+                         edit_mode=edit_desk_id is not None,
+                         edit_desk_id=edit_desk_id,
+                         edit_desk_number=edit_desk_number,
+                         confirm_delete=confirm_delete,
+                         add_new=add_new,
+                         is_admin=True)
+
+
+@main.route('/admin/desk/update/<int:desk_id>', methods=['POST'])
+@require_admin
+def admin_update_desk(desk_id):
+    """Admin kan desk details wijzigen (bureau, gebouw, dienst, scherm, stoel)"""
     user = get_current_user()
     
     try:
-        from datetime import datetime
-        now = datetime.now()
+        desk = Desk.query.filter_by(desk_id=desk_id).first()
+        if not desk:
+            flash("Werkpost niet gevonden.", "danger")
+            return redirect(url_for('main.admin_dashboard'))
         
-        # Alle toekomstige reservaties
-        upcoming_reservations = Reservation.query.filter(
-            Reservation.starttijd >= now
-        ).order_by(Reservation.starttijd).all()
+        # Haal waardes op uit form
+        new_desk_number = request.form.get('desk_number')
+        new_building_id = request.form.get('building_id')
+        new_building_other = request.form.get('building_other', '').strip()
+        new_dienst_id = request.form.get('dienst_id')
+        new_screen = request.form.get('screen')
+        new_screen_other = request.form.get('screen_other', '').strip()
+        new_chair = request.form.get('chair')
+        new_chair_other = request.form.get('chair_other', '').strip()
         
-        # Voeg extra info toe aan elke reservatie
-        for res in upcoming_reservations:
-            if res.desk and res.desk.building:
-                res.building_adress = res.desk.building.adress
-                res.desk_number = res.desk.desk_number
-            else:
-                res.building_adress = 'N/A'
-                res.desk_number = 'N/A'
-            
-            # Voeg user info toe
-            res.user_name = f"{res.user.user_name} {res.user.user_last_name}"
-            res.user_email = res.user.user_email
-            
+        # Update bureau nummer
+        if new_desk_number:
+            desk.desk_number = int(new_desk_number)
+        
+        # Update gebouw - check eerst of "Andere" is geselecteerd
+        if new_building_id == 'other' and new_building_other:
+            # Maak nieuw gebouw aan
+            new_building = Building(adress=new_building_other, floor=1)
+            db.session.add(new_building)
+            db.session.flush()  # Om building_id te krijgen
+            desk.building_id = new_building.building_id
+            flash(f"Nieuw gebouw '{new_building_other}' aangemaakt.", "success")
+        elif new_building_id and new_building_id != 'other':
+            desk.building_id = int(new_building_id)
+        
+        # Update dienst
+        if new_dienst_id and new_dienst_id != 'None':
+            desk.dienst_id = int(new_dienst_id)
+        else:
+            desk.dienst_id = None
+        
+        # Update scherm - check eerst of "Andere" is geselecteerd
+        if new_screen == 'other' and new_screen_other:
+            desk.screen = new_screen_other.capitalize()
+        elif new_screen and new_screen != 'other':
+            desk.screen = new_screen.capitalize()
+        
+        # Update stoel - check eerst of "Andere" is geselecteerd  
+        if new_chair == 'other' and new_chair_other:
+            desk.chair = new_chair_other.capitalize()
+        elif new_chair and new_chair != 'other':
+            desk.chair = new_chair.capitalize()
+        
+        db.session.commit()
+        flash(f"Werkpost {desk.desk_number} succesvol gewijzigd.", "success")
+        
     except Exception as e:
-        flash(f"Fout bij ophalen reservaties: {str(e)}")
-        upcoming_reservations = []
+        db.session.rollback()
+        flash(f"Fout bij wijzigen werkpost: {str(e)}", "danger")
     
-    return render_template('admin_dashboard.html', 
-                         user=user, 
-                         reservations=upcoming_reservations)
+    # Redirect terug naar edit mode zodat gebruiker op dezelfde plek blijft
+    return redirect(url_for('main.admin_dashboard', edit=desk_id, _anchor=f'desk-{desk_id}'))
+
+
+@main.route('/admin/desk/create', methods=['POST'])
+@require_admin
+def admin_create_desk():
+    """Admin kan nieuw bureau toevoegen"""
+    user = get_current_user()
+    
+    try:
+        # Haal waardes op uit form
+        new_desk_number = request.form.get('desk_number')
+        new_building_id = request.form.get('building_id')
+        new_building_other = request.form.get('building_other', '').strip()
+        new_dienst_id = request.form.get('dienst_id')
+        new_screen = request.form.get('screen')
+        new_screen_other = request.form.get('screen_other', '').strip()
+        new_chair = request.form.get('chair')
+        new_chair_other = request.form.get('chair_other', '').strip()
+        
+        # Valideer bureau nummer
+        if not new_desk_number or int(new_desk_number) < 1:
+            flash("Bureau nummer moet minimaal 1 zijn.", "danger")
+            return redirect(url_for('main.admin_dashboard', add_new=1))
+        
+        desk_number = int(new_desk_number)
+        
+        # Check of bureau nummer al bestaat
+        existing = Desk.query.filter_by(desk_number=desk_number).first()
+        if existing:
+            flash(f"Bureau {desk_number} bestaat al.", "danger")
+            return redirect(url_for('main.admin_dashboard', add_new=1))
+        
+        # Handle gebouw
+        if new_building_id == 'other' and new_building_other:
+            new_building = Building(adress=new_building_other, floor=1)
+            db.session.add(new_building)
+            db.session.flush()
+            building_id = new_building.building_id
+            flash(f"Nieuw gebouw '{new_building_other}' aangemaakt.", "success")
+        elif new_building_id and new_building_id != 'other':
+            building_id = int(new_building_id)
+        else:
+            flash("Selecteer een gebouw.", "danger")
+            return redirect(url_for('main.admin_dashboard', add_new=1))
+        
+        # Handle dienst
+        if new_dienst_id and new_dienst_id != 'None':
+            dienst_id = int(new_dienst_id)
+        else:
+            dienst_id = None
+        
+        # Handle scherm
+        if new_screen == 'other' and new_screen_other:
+            screen = new_screen_other.capitalize()
+        elif new_screen and new_screen != 'other':
+            screen = new_screen.capitalize()
+        else:
+            screen = None
+        
+        # Handle stoel
+        if new_chair == 'other' and new_chair_other:
+            chair = new_chair_other.capitalize()
+        elif new_chair and new_chair != 'other':
+            chair = new_chair.capitalize()
+        else:
+            chair = None
+        
+        # Maak nieuw bureau aan
+        new_desk = Desk(
+            desk_number=desk_number,
+            building_id=building_id,
+            dienst_id=dienst_id,
+            screen=screen,
+            chair=chair
+        )
+        
+        db.session.add(new_desk)
+        db.session.commit()
+        flash(f"Bureau {desk_number} succesvol toegevoegd.", "success")
+        
+    except ValueError:
+        flash("Ongeldig bureau nummer ingevoerd.", "danger")
+        return redirect(url_for('main.admin_dashboard', add_new=1))
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Fout bij toevoegen bureau: {str(e)}", "danger")
+        return redirect(url_for('main.admin_dashboard', add_new=1))
+    
+    return redirect(url_for('main.admin_dashboard'))
+
+
+@main.route('/admin/desk/delete/<int:desk_id>', methods=['POST'])
+@require_admin
+def admin_delete_desk(desk_id):
+    """Admin kan desk verwijderen"""
+    user = get_current_user()
+    
+    try:
+        desk = Desk.query.filter_by(desk_id=desk_id).first()
+        if not desk:
+            flash("Werkpost niet gevonden.", "danger")
+            return redirect(url_for('main.admin_dashboard'))
+        
+        desk_number = desk.desk_number
+        db.session.delete(desk)
+        db.session.commit()
+        flash(f"Werkpost {desk_number} succesvol verwijderd.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Fout bij verwijderen werkpost: {str(e)}", "danger")
+    
+    return redirect(url_for('main.admin_dashboard'))
 
 
 @main.route('/admin/reservation/delete/<int:res_id>', methods=['POST'])
@@ -630,7 +893,7 @@ def admin_delete_reservation(res_id):
         reservation = Reservation.query.filter_by(res_id=res_id).first()
         if not reservation:
             flash("Reservatie niet gevonden.")
-            return redirect(url_for('main.admin_dashboard'))
+            return redirect(url_for('main.admin_reservations_overview'))
         
         # Haal user info op voor melding
         res_user = reservation.user
@@ -644,7 +907,40 @@ def admin_delete_reservation(res_id):
         db.session.rollback()
         flash(f"Fout bij verwijderen: {str(e)}")
     
-    return redirect(url_for('main.admin_dashboard'))
+    return redirect(url_for('main.admin_reservations_overview'))
+
+
+@main.route('/admin/reservations')
+@require_admin
+def admin_reservations_overview():
+    """Admin overzicht van alle toekomstige reservaties"""
+    user = get_current_user()
+    
+    try:
+        # Haal alle toekomstige reservaties op met user, desk en building info
+        now = datetime.now()
+        reservations = db.session.query(
+            Reservation.res_id,
+            Reservation.starttijd,
+            Reservation.eindtijd,
+            User.user_name,
+            User.user_last_name,
+            User.user_email,
+            Desk.desk_number,
+            Building.adress.label('building_adress')
+        ).join(User, Reservation.user_id == User.user_id
+        ).join(Desk, Reservation.desk_id == Desk.desk_id
+        ).join(Building, Desk.building_id == Building.building_id
+        ).filter(Reservation.starttijd >= now
+        ).order_by(Reservation.starttijd).all()
+        
+    except Exception as e:
+        flash(f"Fout bij ophalen reservaties: {str(e)}")
+        reservations = []
+    
+    return render_template('admin_reservations_overview.html',
+                         user=user,
+                         reservations=reservations)
 
 
 @main.route('/admin/reservation/edit/<int:res_id>', methods=['GET', 'POST'])
@@ -660,7 +956,7 @@ def admin_edit_reservation(res_id):
     
     if not reservation:
         flash("Reservatie niet gevonden.")
-        return redirect(url_for('main.admin_dashboard'))
+        return redirect(url_for('main.admin_reservations_overview'))
     
     if request.method == 'POST':
         try:
@@ -698,7 +994,7 @@ def admin_edit_reservation(res_id):
             db.session.commit()
             
             flash("Reservatie succesvol gewijzigd.")
-            return redirect(url_for('main.admin_dashboard'))
+            return redirect(url_for('main.admin_reservations_overview'))
             
         except Exception as e:
             db.session.rollback()
@@ -772,7 +1068,7 @@ def admin_create_reservation():
             db.session.commit()
             
             flash("Reservatie succesvol aangemaakt!")
-            return redirect(url_for('main.admin_dashboard'))
+            return redirect(url_for('main.admin_reservations_overview'))
             
         except Exception as e:
             db.session.rollback()

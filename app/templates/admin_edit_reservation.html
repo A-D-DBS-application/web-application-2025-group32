@@ -28,7 +28,7 @@
         <input type="time" name="end_time" value="{{ reservation.eindtijd.strftime('%H:%M') }}" required><br>
         
         <button type="submit">Opslaan</button>
-        <a href="{{ url_for('main.admin_dashboard') }}">Annuleren</a>
+        <a href="{{ url_for('main.admin_reservations_overview') }}">Annuleren</a>
     </form>
 </body>
 </html>

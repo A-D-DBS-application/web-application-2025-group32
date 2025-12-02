@@ -46,11 +46,10 @@
         <input type="time" name="end_time" required><br>
         
         <button type="submit">Reservatie Aanmaken</button>
-        <a href="{{ url_for('main.admin_dashboard') }}">Annuleren</a>
+        <a href="{{ url_for('admin_reservations_overview') }}">Annuleren</a>
     </form>
     
     <script>
-        // Dynamic desk loading wanneer gebouw gekozen wordt
         document.getElementById('building_select').addEventListener('change', function() {
             const buildingId = this.value;
             const deskSelect = document.getElementById('desk_select');
@@ -60,7 +59,6 @@
                 return;
             }
             
-            // Fetch desks for selected building
             fetch(`/api/desks?building_id=${buildingId}`)
                 .then(res => res.json())
                 .then(desks => {

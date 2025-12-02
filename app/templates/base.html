@@ -16,15 +16,17 @@
             <nav class="nav">
                 {% if user or user_display %}
                     {% if is_admin %}
-                    <a href="{{ url_for('main.feedback_analysis') }}">Feedback analyse</a>
+                    <div class="dropdown">
+                        <button class="dropdown-btn">Beheer ▾</button>
+                        <div class="dropdown-content">
+                            <a href="{{ url_for('main.feedback_analysis') }}">Feedback analyse</a>
+                            <a href="{{ url_for('main.admin_dashboard') }}">Bureaubeheer</a>
+                            <a href="{{ url_for('main.admin_reservations_overview') }}">Reservaties beheren</a>
+                        </div>
+                    </div>
                     {% endif %}
                     <a href="{{ url_for('main.reserve') }}">Nieuwe reservatie</a>
                     <a href="{{ url_for('main.mijn_reservaties') }}">Mijn reservaties</a>
-                    {% if user_obj and user_obj.is_admin() %}
-                        <a href="{{ url_for('main.admin_dashboard') }}" class="nav-link">
-                            Admin Dashboard
-                        </a>
-                    {% endif %}
                     <a href="{{ url_for('logout') }}">Afmelden</a>
                 {% else %}
                     <a href="{{ url_for('login') }}">Aanmelden</a>
@@ -59,5 +61,28 @@
             <p>© Colruyt Group — Reservatie Systeem</p>
         </div>
     </footer>
+
+    <script>
+        // Dropdown toggle functionaliteit
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropdown = document.querySelector('.dropdown');
+            const dropdownBtn = document.querySelector('.dropdown-btn');
+            
+            if (dropdownBtn) {
+                // Toggle dropdown bij klik op button
+                dropdownBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    dropdown.classList.toggle('active');
+                });
+                
+                // Sluit dropdown bij klik buiten dropdown
+                document.addEventListener('click', function(e) {
+                    if (!dropdown.contains(e.target)) {
+                        dropdown.classList.remove('active');
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

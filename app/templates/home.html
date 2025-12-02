@@ -16,7 +16,9 @@
         <a class="btn" href="{{ url_for('main.reserve') }}">Nieuwe reservatie</a>
         <a class="btn btn-secondary" href="{{ url_for('main.mijn_reservaties') }}">Mijn reservaties</a>
         {% if is_admin %}
-        <a class="btn" href="{{ url_for('main.feedback_analysis') }}">📊 Feedback analyse</a>
+        <a class="btn" href="{{ url_for('main.feedback_analysis') }}">Feedback analyse</a>
+        <a class="btn" href="{{ url_for('main.admin_dashboard') }}">Bureaubeheer</a>
+        <a class="btn" href="{{ url_for('main.admin_reservations_overview') }}">Reservaties beheren</a>
         {% endif %}
       </div>
     </div>
