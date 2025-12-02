@@ -80,6 +80,26 @@ def reserve():
             flash("Vul alstublieft datum en tijden in.")
             return redirect(url_for("main.reserve"))
 
+        # Check of datum niet in het verleden ligt
+        try:
+            from datetime import datetime
+            selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            today = datetime.now().date()
+            
+            if selected_date < today:
+                flash("Je kunt geen reservaties maken in het verleden.")
+                return redirect(url_for("main.reserve"))
+            
+            # Check of starttijd niet in het verleden ligt voor vandaag
+            if selected_date == today:
+                selected_start = datetime.strptime(f"{date_str} {start_time_str}", "%Y-%m-%d %H:%M")
+                if selected_start < datetime.now():
+                    flash("Je kunt geen reservaties maken in het verleden.")
+                    return redirect(url_for("main.reserve"))
+        except ValueError:
+            flash("Ongeldige datum of tijd formaat.")
+            return redirect(url_for("main.reserve"))
+
         # If the user is not logged in, redirect them to login before
         # proceeding to choose/confirm a desk.
         if not user:
@@ -243,6 +263,8 @@ def desk_detail(desk_id):
     date_str = request.args.get("date")
     start_str = request.args.get("start_time")
     end_str = request.args.get("end_time")
+    building_id_str = request.args.get("building_id", "")
+    floor_str = request.args.get("floor", "")
 
     if request.method == "POST":
         action = request.form.get("action")
@@ -303,7 +325,13 @@ def desk_detail(desk_id):
                                         end_time=end_str))
 
         elif action == "cancel":
-            return redirect(url_for("home"))
+            # Ga terug naar reserve pagina met alle oorspronkelijk ingevulde waarden
+            return redirect(url_for("main.reserve",
+                                   building_id=building_id_str,
+                                   floor=floor_str,
+                                   date=date_str,
+                                   start_time=start_str,
+                                   end_time=end_str))
 
     return render_template("desk_detail.html",
                            user=user,

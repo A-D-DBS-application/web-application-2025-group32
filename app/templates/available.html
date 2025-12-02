@@ -23,7 +23,7 @@
     <p class="small" style="margin:4px 0">Scherm: {{ desk.screen or 'Niet vermeld' }}</p>
     <p class="small" style="margin:4px 0">Stoel: {{ desk.chair or 'Niet vermeld' }}</p>
     <div style="margin-top:16px">
-      <a class="btn" href="{{ url_for('main.desk_detail', desk_id=desk.desk_id, date=saved.date, start_time=saved.start_time, end_time=saved.end_time) }}" style="display:block;text-align:center">Selecteer bureau</a>
+      <a class="btn" href="{{ url_for('main.desk_detail', desk_id=desk.desk_id, building_id=saved.building_id, floor=saved.floor, date=saved.date, start_time=saved.start_time, end_time=saved.end_time) }}" style="display:block;text-align:center">Selecteer bureau</a>
     </div>
   </div>
   {% endfor %}
