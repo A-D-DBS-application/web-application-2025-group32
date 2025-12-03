@@ -1,62 +1,69 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Reservaties Beheren - Admin</title>
-</head>
-<body>
-    <h1>Reservaties Beheren</h1>
-    <p>Ingelogd als: {{ user.user_name }} {{ user.user_last_name }} (Admin)</p>
-    
-    <a href="{{ url_for('home') }}">Terug naar Home</a>
-    <a href="{{ url_for('main.admin_create_reservation') }}">Nieuwe Reservatie Aanmaken</a>
-    
-    <h2>Alle Toekomstige Reservaties</h2>
-    
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for msg in messages %}
-                <p style="color: blue;">{{ msg }}</p>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+{% extends "base.html" %}
+
+{% block title %}Reservaties Beheren - Admin{% endblock %}
+
+{% block hero %}
+<h1 style="font-size: 38px; font-weight: 800; margin: 0; letter-spacing: -0.5px;">Reservaties Beheren</h1>
+<p style="color: var(--text-light); margin-top: 8px;">Ingelogd als: {{ user.user_name }} {{ user.user_last_name }} (Admin)</p>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px; display: flex; gap: 12px;">
+    <a href="{{ url_for('home') }}" class="btn btn-ghost">Terug naar Home</a>
+    <a href="{{ url_for('main.admin_create_reservation') }}" class="btn">Nieuwe Reservatie Aanmaken</a>
+</div>
+
+<div class="card">
+    <h2 style="margin-top: 0;">Alle Toekomstige Reservaties</h2>
     
     {% if reservations %}
-        <table border="1">
-            <thead>
-                <tr>
-                    <th>Gebruiker</th>
-                    <th>Email</th>
-                    <th>Gebouw</th>
-                    <th>Bureau</th>
-                    <th>Datum</th>
-                    <th>Starttijd</th>
-                    <th>Eindtijd</th>
-                    <th>Acties</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for res in reservations %}
-                <tr>
-                    <td>{{ res.user_name }}</td>
-                    <td>{{ res.user_email }}</td>
-                    <td>{{ res.building_adress }}</td>
-                    <td>{{ res.desk_number }}</td>
-                    <td>{{ res.starttijd.strftime('%d/%m/%Y') }}</td>
-                    <td>{{ res.starttijd.strftime('%H:%M') }}</td>
-                    <td>{{ res.eindtijd.strftime('%H:%M') }}</td>
-                    <td>
-                        <a href="{{ url_for('main.admin_edit_reservation', res_id=res.res_id) }}">Wijzigen</a>
-                        
-                        <form method="POST" action="{{ url_for('main.admin_delete_reservation', res_id=res.res_id) }}" style="display:inline;">
-                            <button type="submit" onclick="return confirm('Weet je zeker dat je deze reservatie wilt verwijderen?')">Verwijderen</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Gebruiker</th>
+                        <th>Email</th>
+                        <th>Gebouw</th>
+                        <th>Bureau</th>
+                        <th>Datum</th>
+                        <th>Starttijd</th>
+                        <th>Eindtijd</th>
+                        <th>Acties</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in reservations %}
+                    <tr>
+                        <td style="font-weight: 600; color: var(--text);">{{ res.user_name }}</td>
+                        <td>{{ res.user_email }}</td>
+                        <td style="text-align: center; font-weight: 600;">{{ res.building_adress }}</td>
+                        <td style="text-align: center;">{{ res.desk_number }}</td>
+                        <td>{{ res.starttijd.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ res.starttijd.strftime('%H:%M') }}</td>
+                        <td>{{ res.eindtijd.strftime('%H:%M') }}</td>
+                        <td>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <a href="{{ url_for('main.admin_edit_reservation', res_id=res.res_id) }}" 
+                                   style="color: var(--primary); text-decoration: none; font-weight: 600; font-size: 14px;">
+                                    Wijzigen
+                                </a>
+                                
+                                <form method="POST" action="{{ url_for('main.admin_delete_reservation', res_id=res.res_id) }}" style="display:inline; margin: 0;">
+                                    <button type="submit" 
+                                            onclick="return confirm('Weet je zeker dat je deze reservatie wilt verwijderen?')"
+                                            style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-weight: 600; font-size: 14px; padding: 0; font-family: inherit;">
+                                        Verwijderen
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% else %}
-        <p>Geen toekomstige reservaties gevonden.</p>
+        <p style="color: var(--muted); text-align: center; padding: 40px 0;">Geen toekomstige reservaties gevonden.</p>
     {% endif %}
-</body>
-</html>
+</div>
+{% endblock %}

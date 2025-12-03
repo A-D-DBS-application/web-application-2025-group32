@@ -31,4 +31,19 @@ def create_app():
         # if routes cannot be imported here, caller can register later
         pass
 
+    @app.context_processor
+    def inject_user():
+        """Maak user_obj beschikbaar in alle templates"""
+        from flask import session
+        if "user" not in session:
+            return dict(user_obj=None)
+        
+        try:
+            from .models import User
+            user_id = int(session.get("user"))
+            user_obj = User.query.filter_by(user_id=user_id).first()
+            return dict(user_obj=user_obj)
+        except:
+            return dict(user_obj=None)
+
     return app
