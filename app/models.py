@@ -11,9 +11,8 @@ class User(db.Model):
     user_id = db.Column(db.Integer, primary_key=True)  # Unieke ID
     user_name = db.Column(db.String(120))
     user_last_name = db.Column(db.String(120))
-    user_afdeling = db.Column(db.String(200))
+    dienst = db.Column(db.String(200))  # Afdeling/dienst van de gebruiker
     user_email = db.Column(db.String(200))
-    dienst_id = db.Column(db.Integer)
     role = db.Column(db.String(50), default='user')
     
     # Relaties
@@ -55,7 +54,7 @@ class Desk(db.Model):
     desk_id = db.Column(db.Integer, primary_key=True)
     desk_number = db.Column(db.Integer)  # Bureau nummer
     building_id = db.Column(db.Integer, db.ForeignKey("building.building_id"), nullable=False)
-    dienst_id = db.Column(db.Integer)  # Afdeling
+    dienst = db.Column(db.String(100))  # Afdeling/dienst - komt overeen met user.dienst
     screen = db.Column(db.Text)  # Type scherm
     chair = db.Column(db.Text)  # Type stoel
     
@@ -66,19 +65,9 @@ class Desk(db.Model):
     def __repr__(self):
         return f"<Desk {self.desk_id}>"
     
-    def get_dienst_naam(self):
-        """Geef de dienstnaam terug op basis van dienst_id"""
-        if not self.dienst_id:
-            return "Onbekend"
-        
-        # Mapping van dienst_id naar afdeling naam
-        dienst_mapping = {
-            1: "Marketing",
-            3: "IT",
-            5: "Sales"
-        }
-        
-        return dienst_mapping.get(self.dienst_id, f"Dienst {self.dienst_id}")
+    def get_dienst(self):
+        """Geef de dienst terug"""
+        return self.dienst if self.dienst else "Geen dienst"
 
 
 

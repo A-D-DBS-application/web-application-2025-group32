@@ -838,7 +838,7 @@ def analyze_feedback_from_db(db_session) -> Dict:
             'extra_opmerkingen': record.extra_opmerkingen,
             'desk_number': record.reservation.desk.desk_number,
             'building_name': building_name,
-            'dienst_naam': record.reservation.desk.get_dienst_naam()
+            'dienst_naam': record.reservation.desk.get_dienst()
         })
     
     # Analyseer

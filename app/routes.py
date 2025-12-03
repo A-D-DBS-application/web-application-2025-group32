@@ -167,25 +167,15 @@ def available():
     # Query: alle bureaus, maar filteren op ZOWEL adress ALS floor (optioneel)
     q = Desk.query
     
-    # Filter op dienst: gebruiker ziet alleen werkposten van zijn eigen dienst
-    # Admins zien alle werkposten
+    # Filter op dienst: gebruiker ziet alleen bureaus van zijn eigen dienst
+    # Admins zien alle bureaus
     if user and not user.is_admin():
-        # Haal dienst_id op van gebruiker (gebaseerd op user_afdeling)
-        user_afdeling = user.user_afdeling
+        # Haal dienst op van gebruiker
+        user_dienst = user.dienst
         
-        # Mapping van user_afdeling naar dienst_id
-        afdeling_to_dienst = {
-            'Marketing': 1,
-            'IT': 3,
-            'Sales': 5
-        }
-        
-        user_dienst_id = afdeling_to_dienst.get(user_afdeling)
-        
-        if user_dienst_id:
-            # Filter alleen desks met deze dienst_id OF desks zonder dienst (voor backwards compatibility)
-            q = q.filter((Desk.dienst_id == user_dienst_id) | (Desk.dienst_id == None))
-        # Als user_afdeling niet herkend wordt, toon alle desks (backwards compatibility)
+        if user_dienst:
+            # Filter alleen desks met deze dienst OF desks zonder dienst
+            q = q.filter((Desk.dienst == user_dienst) | (Desk.dienst == None))
     
     # Filter op building: zoek building die matcht met ZOWEL adress ALS floor (alleen als ingevuld)
     # Check of de waarden niet leeg zijn
@@ -221,25 +211,26 @@ def available():
     monitor_filter = (request.args.get("monitor") or "").strip().lower()
     chair_filter = (request.args.get("chair") or "").strip().lower()
 
-    # Values stored in the DB are like 'single monitor', 'dual monitor', 'triple monitor'.
-    # Allow the short tokens 'single'|'dual'|'triple' to match those via substring.
-    allowed_monitors = {"single", "dual", "triple"}
-    allowed_chairs = {"standard", "ergonomic", "standing desk"}
+    # Haal alle unieke scherm en stoel types op uit de database (lowercase)
+    try:
+        all_screens_raw = db.session.query(Desk.screen).filter(Desk.screen.isnot(None)).distinct().all()
+        all_screens = sorted([s[0].lower() for s in all_screens_raw if s[0]])
+    except Exception:
+        all_screens = []
+    
+    try:
+        all_chairs_raw = db.session.query(Desk.chair).filter(Desk.chair.isnot(None)).distinct().all()
+        all_chairs = sorted([c[0].lower() for c in all_chairs_raw if c[0]])
+    except Exception:
+        all_chairs = []
 
-    if monitor_filter:
-        if monitor_filter in allowed_monitors:
-            # Use case-insensitive substring match
-            candidate_desks = [d for d in candidate_desks if monitor_filter in (d.screen or "").strip().lower()]
-        else:
-            # unknown monitor filter -> no results
-            candidate_desks = []
+    # Filter op monitor
+    if monitor_filter and monitor_filter in all_screens:
+        candidate_desks = [d for d in candidate_desks if d.screen and monitor_filter in d.screen.lower()]
 
-    if chair_filter:
-        if chair_filter in allowed_chairs:
-            # Use case-insensitive substring match
-            candidate_desks = [d for d in candidate_desks if chair_filter in (d.chair or "").strip().lower()]
-        else:
-            candidate_desks = []
+    # Filter op stoel
+    if chair_filter and chair_filter in all_chairs:
+        candidate_desks = [d for d in candidate_desks if d.chair and chair_filter in d.chair.lower()]
 
     # Filter: verwijder bureaus met overlappende reservaties
     available_desks = []
@@ -288,6 +279,8 @@ def available():
                            user=user,
                            desks=available_desks,
                            saved=saved,
+                           all_screens=all_screens,
+                           all_chairs=all_chairs,
                            buildings=all_buildings,
                            is_admin=user.is_admin() if user and hasattr(user, 'is_admin') else False)
 
@@ -631,7 +624,7 @@ def mark_feedback_reviewed(feedback_id):
 @main.route('/admin/dashboard')
 @require_admin
 def admin_dashboard():
-    """Admin dashboard - werkposten beheren en koppelen aan diensten"""
+    """Admin dashboard - bureaus beheren en koppelen aan diensten"""
     user = get_current_user()
     
     # Check voor edit mode, delete confirmation, en add new parameters
@@ -640,8 +633,8 @@ def admin_dashboard():
     add_new = request.args.get('add_new', type=int)
     
     try:
-        # Haal alle desks op met building info
-        desks = Desk.query.join(Building).order_by(Building.adress, Desk.desk_number).all()
+        # Haal alle desks op met building info, gesorteerd op bureau nummer
+        desks = Desk.query.join(Building).order_by(Desk.desk_number).all()
         
         # Haal alle unieke gebouwen op (distinct op adress om duplicaten te voorkomen)
         buildings_query = db.session.query(Building.adress, Building.building_id).distinct(Building.adress).order_by(Building.adress).all()
@@ -650,32 +643,32 @@ def admin_dashboard():
         # Haal alle unieke scherm types op uit de database
         screens_query = db.session.query(Desk.screen).filter(Desk.screen.isnot(None)).distinct().all()
         screens_raw = [s[0] for s in screens_query if s[0]]
-        # Custom volgorde: Single, Dual, Triple, dan de rest alfabetisch
+        # Custom volgorde: single, dual, triple, dan de rest alfabetisch
         screen_order = ['single', 'dual', 'triple']
         screens_ordered = []
         for screen in screen_order:
             # Match op basis van 'bevat' in plaats van exacte match
             matching = [s for s in screens_raw if screen in s.lower()]
             if matching:
-                screens_ordered.append(matching[0].capitalize())
+                screens_ordered.append(matching[0])
                 screens_raw = [s for s in screens_raw if screen not in s.lower()]
-        # Voeg overige toe (alfabetisch, met hoofdletter)
-        screens_ordered.extend(sorted([s.capitalize() for s in screens_raw]))
+        # Voeg overige toe (alfabetisch, lowercase)
+        screens_ordered.extend(sorted(screens_raw))
         screens_list = screens_ordered
         
         # Haal alle unieke stoel types op uit de database
         chairs_query = db.session.query(Desk.chair).filter(Desk.chair.isnot(None)).distinct().all()
         chairs_raw = [c[0] for c in chairs_query if c[0]]
-        # Custom volgorde: Standard, Standing, Ergonomic, dan de rest alfabetisch
+        # Custom volgorde: standard, standing, ergonomic, dan de rest alfabetisch
         chair_order = ['standard', 'standing', 'ergonomic']
         chairs_ordered = []
         for chair in chair_order:
             matching = [c for c in chairs_raw if c.lower() == chair]
             if matching:
-                chairs_ordered.append(matching[0].capitalize())
+                chairs_ordered.append(matching[0])
                 chairs_raw = [c for c in chairs_raw if c.lower() != chair]
-        # Voeg overige toe (alfabetisch, met hoofdletter)
-        chairs_ordered.extend(sorted([c.capitalize() for c in chairs_raw]))
+        # Voeg overige toe (alfabetisch, lowercase)
+        chairs_ordered.extend(sorted(chairs_raw))
         chairs_list = chairs_ordered
         
         # Voeg extra info toe
@@ -688,8 +681,8 @@ def admin_dashboard():
                 'desk_number': desk.desk_number,
                 'building_adress': desk.building.adress if desk.building else 'N/A',
                 'building_id': desk.building_id,
-                'dienst_id': desk.dienst_id,
-                'dienst_naam': desk.get_dienst_naam(),
+                'dienst': desk.dienst,
+                'dienst_naam': desk.get_dienst(),
                 'screen': desk.screen or 'Niet gespecificeerd',
                 'chair': desk.chair or 'Niet gespecificeerd'
             }
@@ -699,15 +692,21 @@ def admin_dashboard():
             if edit_desk_id and desk.desk_id == edit_desk_id:
                 edit_desk_number = desk.desk_number
         
-        # Lijst van beschikbare diensten
-        diensten = [
-            {'id': 1, 'naam': 'Marketing'},
-            {'id': 3, 'naam': 'IT'},
-            {'id': 5, 'naam': 'Sales'}
-        ]
+        # Haal alle unieke diensten op uit de user tabel
+        diensten_query = db.session.query(User.dienst).filter(User.dienst.isnot(None)).distinct().all()
+        diensten_set = set([d[0] for d in diensten_query if d[0]])
+        
+        # Voeg ook diensten toe die al gekoppeld zijn aan bureaus
+        bestaande_diensten = db.session.query(Desk.dienst).filter(Desk.dienst.isnot(None)).distinct().all()
+        for dienst in bestaande_diensten:
+            if dienst[0]:
+                diensten_set.add(dienst[0])
+        
+        # Sorteer alfabetisch
+        diensten = [{'id': None, 'naam': d} for d in sorted(diensten_set)]
         
     except Exception as e:
-        flash(f"Fout bij ophalen werkposten: {str(e)}", "danger")
+        flash(f"Fout bij ophalen bureaus: {str(e)}", "danger")
         desk_list = []
         diensten = []
         buildings_list = []
@@ -739,7 +738,7 @@ def admin_update_desk(desk_id):
     try:
         desk = Desk.query.filter_by(desk_id=desk_id).first()
         if not desk:
-            flash("Werkpost niet gevonden.", "danger")
+            flash("Bureau niet gevonden.", "danger")
             return redirect(url_for('main.admin_dashboard'))
         
         # Haal waardes op uit form
@@ -747,6 +746,7 @@ def admin_update_desk(desk_id):
         new_building_id = request.form.get('building_id')
         new_building_other = request.form.get('building_other', '').strip()
         new_dienst_id = request.form.get('dienst_id')
+        new_dienst_other = request.form.get('dienst_other', '').strip()
         new_screen = request.form.get('screen')
         new_screen_other = request.form.get('screen_other', '').strip()
         new_chair = request.form.get('chair')
@@ -767,33 +767,38 @@ def admin_update_desk(desk_id):
         elif new_building_id and new_building_id != 'other':
             desk.building_id = int(new_building_id)
         
-        # Update dienst
-        if new_dienst_id and new_dienst_id != 'None':
-            desk.dienst_id = int(new_dienst_id)
+        # Update dienst - sla direct de dienst naam op
+        if new_dienst_id == 'other' and new_dienst_other:
+            # Sla nieuwe dienst naam op
+            desk.dienst = new_dienst_other
+            flash(f"Dienst '{new_dienst_other}' gekoppeld.", "success")
+        elif new_dienst_id and new_dienst_id != 'None' and new_dienst_id != 'other':
+            # Dit is een bestaande dienst naam
+            desk.dienst = new_dienst_id
         else:
-            desk.dienst_id = None
+            desk.dienst = None
         
         # Update scherm - check eerst of "Andere" is geselecteerd
         if new_screen == 'other' and new_screen_other:
-            desk.screen = new_screen_other.capitalize()
+            desk.screen = new_screen_other.lower()
         elif new_screen and new_screen != 'other':
-            desk.screen = new_screen.capitalize()
+            desk.screen = new_screen
         
         # Update stoel - check eerst of "Andere" is geselecteerd  
         if new_chair == 'other' and new_chair_other:
-            desk.chair = new_chair_other.capitalize()
+            desk.chair = new_chair_other.lower()
         elif new_chair and new_chair != 'other':
-            desk.chair = new_chair.capitalize()
+            desk.chair = new_chair
         
         db.session.commit()
-        flash(f"Werkpost {desk.desk_number} succesvol gewijzigd.", "success")
+        flash("Wijzigingen zijn succesvol opgeslagen", "success")
         
     except Exception as e:
         db.session.rollback()
-        flash(f"Fout bij wijzigen werkpost: {str(e)}", "danger")
+        flash(f"Fout bij wijzigen bureau: {str(e)}", "danger")
     
-    # Redirect terug naar edit mode zodat gebruiker op dezelfde plek blijft
-    return redirect(url_for('main.admin_dashboard', edit=desk_id, _anchor=f'desk-{desk_id}'))
+    # Redirect terug naar normale view (zonder edit mode)
+    return redirect(url_for('main.admin_dashboard', _anchor=f'desk-{desk_id}'))
 
 
 @main.route('/admin/desk/create', methods=['POST'])
@@ -808,6 +813,7 @@ def admin_create_desk():
         new_building_id = request.form.get('building_id')
         new_building_other = request.form.get('building_other', '').strip()
         new_dienst_id = request.form.get('dienst_id')
+        new_dienst_other = request.form.get('dienst_other', '').strip()
         new_screen = request.form.get('screen')
         new_screen_other = request.form.get('screen_other', '').strip()
         new_chair = request.form.get('chair')
@@ -839,25 +845,30 @@ def admin_create_desk():
             flash("Selecteer een gebouw.", "danger")
             return redirect(url_for('main.admin_dashboard', add_new=1))
         
-        # Handle dienst
-        if new_dienst_id and new_dienst_id != 'None':
-            dienst_id = int(new_dienst_id)
+        # Handle dienst - sla direct de dienst naam op
+        if new_dienst_id == 'other' and new_dienst_other:
+            # Sla nieuwe dienst naam op
+            dienst = new_dienst_other
+            flash(f"Dienst '{new_dienst_other}' gekoppeld.", "success")
+        elif new_dienst_id and new_dienst_id != 'None' and new_dienst_id != 'other':
+            # Dit is een bestaande dienst naam
+            dienst = new_dienst_id
         else:
-            dienst_id = None
+            dienst = None
         
         # Handle scherm
         if new_screen == 'other' and new_screen_other:
-            screen = new_screen_other.capitalize()
+            screen = new_screen_other.lower()
         elif new_screen and new_screen != 'other':
-            screen = new_screen.capitalize()
+            screen = new_screen
         else:
             screen = None
         
         # Handle stoel
         if new_chair == 'other' and new_chair_other:
-            chair = new_chair_other.capitalize()
+            chair = new_chair_other.lower()
         elif new_chair and new_chair != 'other':
-            chair = new_chair.capitalize()
+            chair = new_chair
         else:
             chair = None
         
@@ -865,7 +876,7 @@ def admin_create_desk():
         new_desk = Desk(
             desk_number=desk_number,
             building_id=building_id,
-            dienst_id=dienst_id,
+            dienst=dienst,
             screen=screen,
             chair=chair
         )
@@ -894,19 +905,32 @@ def admin_delete_desk(desk_id):
     try:
         desk = Desk.query.filter_by(desk_id=desk_id).first()
         if not desk:
-            flash("Werkpost niet gevonden.", "danger")
+            flash("Bureau niet gevonden.", "danger")
             return redirect(url_for('main.admin_dashboard'))
         
         desk_number = desk.desk_number
+        
+        # Vind het volgende bureau (hogere desk_number) om naartoe te scrollen
+        next_desk = Desk.query.filter(Desk.desk_number > desk_number).order_by(Desk.desk_number).first()
+        
+        # Als er geen volgend bureau is, probeer het vorige
+        if not next_desk:
+            next_desk = Desk.query.filter(Desk.desk_number < desk_number).order_by(Desk.desk_number.desc()).first()
+        
         db.session.delete(desk)
         db.session.commit()
-        flash(f"Werkpost {desk_number} succesvol verwijderd.", "success")
+        flash(f"Bureau {desk_number} succesvol verwijderd.", "success")
+        
+        # Redirect naar het volgende/vorige bureau als die bestaat
+        if next_desk:
+            return redirect(url_for('main.admin_dashboard', _anchor=f'desk-{next_desk.desk_id}'))
+        else:
+            return redirect(url_for('main.admin_dashboard'))
         
     except Exception as e:
         db.session.rollback()
-        flash(f"Fout bij verwijderen werkpost: {str(e)}", "danger")
-    
-    return redirect(url_for('main.admin_dashboard'))
+        flash(f"Fout bij verwijderen bureau: {str(e)}", "danger")
+        return redirect(url_for('main.admin_dashboard', _anchor=f'desk-{desk_id}'))
 
 
 @main.route('/admin/reservation/delete/<int:res_id>', methods=['POST'])
@@ -966,6 +990,7 @@ def admin_reservations_overview():
     
     return render_template('admin_reservations_overview.html',
                          user=user,
+                         is_admin=True,
                          reservations=reservations)
 
 
@@ -1029,7 +1054,8 @@ def admin_edit_reservation(res_id):
     
     # GET: toon formulier
     return render_template('admin_edit_reservation.html', 
-                         user=user, 
+                         user=user,
+                         is_admin=True,
                          reservation=reservation)
 
 
@@ -1103,7 +1129,8 @@ def admin_create_reservation():
     
     # GET: toon formulier
     return render_template('admin_create_reservation.html', 
-                         user=user, 
+                         user=user,
+                         is_admin=True,
                          all_users=all_users,
                          buildings=all_buildings)
 

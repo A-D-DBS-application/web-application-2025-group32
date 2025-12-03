@@ -117,13 +117,16 @@
           <!-- Dienst -->
           <div>
             <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Dienst</label>
-            <select name="dienst_id" 
+            <select name="dienst_id" id="dienst-select-new" onchange="toggleOtherInput(this, 'dienst-other-new')"
                     style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
               <option value="None">Geen dienst</option>
               {% for dienst in diensten %}
-                <option value="{{ dienst.id }}">{{ dienst.naam }}</option>
+                <option value="{{ dienst.naam }}">{{ dienst.naam }}</option>
               {% endfor %}
+              <option value="other">Andere...</option>
             </select>
+            <input type="text" name="dienst_other" id="dienst-other-new" placeholder="Nieuwe dienst naam"
+                   style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
           </div>
           
           <!-- Submit button -->
@@ -225,15 +228,18 @@
                     <!-- Dienst -->
                     <div>
                       <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Dienst</label>
-                      <select name="dienst_id" 
+                      <select name="dienst_id" id="dienst-select-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'dienst-other-{{ desk.desk_id }}')"
                               style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
-                        <option value="None" {% if not desk.dienst_id %}selected{% endif %}>Geen dienst</option>
+                        <option value="None" {% if not desk.dienst or desk.dienst == 'Geen dienst' %}selected{% endif %}>Geen dienst</option>
                         {% for dienst in diensten %}
-                          <option value="{{ dienst.id }}" {% if desk.dienst_id == dienst.id %}selected{% endif %}>
+                          <option value="{{ dienst.naam }}" {% if desk.dienst == dienst.naam %}selected{% endif %}>
                             {{ dienst.naam }}
                           </option>
                         {% endfor %}
+                        <option value="other">Andere...</option>
                       </select>
+                      <input type="text" name="dienst_other" id="dienst-other-{{ desk.desk_id }}" placeholder="Nieuwe dienst naam"
+                             style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
                     </div>
                     
                     <!-- Buttons -->
@@ -252,9 +258,9 @@
                 <td style="padding:16px;color:#64748b">{{ desk.screen }}</td>
                 <td style="padding:16px;color:#64748b">{{ desk.chair }}</td>
                 <td style="padding:16px">
-                  {% if desk.dienst_id %}
+                  {% if desk.dienst %}
                     <span style="background:#e8f5e9;color:#2e7d32;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:500">
-                      {{ desk.dienst_naam }}
+                      {{ desk.dienst }}
                     </span>
                   {% else %}
                     <span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:500">
@@ -271,12 +277,12 @@
                       <button type="submit" class="btn" style="padding:8px 16px;background:#f44336;margin-right:4px">
                         Bevestig verwijderen
                       </button>
-                      <a href="{{ url_for('main.admin_dashboard') }}" class="btn" style="padding:6px 12px;background:#94a3b8;text-decoration:none;font-size:0.85rem">
+                      <a href="{{ url_for('main.admin_dashboard', _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:6px 12px;background:#94a3b8;text-decoration:none;font-size:0.85rem">
                         Annuleer
                       </a>
                     </form>
                   {% else %}
-                    <a href="{{ url_for('main.admin_dashboard', delete=desk.desk_id) }}" class="btn" style="padding:8px 16px;background:#f44336;text-decoration:none;display:inline-block">
+                    <a href="{{ url_for('main.admin_dashboard', delete=desk.desk_id, _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:8px 16px;background:#f44336;text-decoration:none;display:inline-block">
                       Verwijder
                     </a>
                   {% endif %}
@@ -309,23 +315,39 @@ function toggleOtherInput(selectElement, inputId) {
 }
 
 // Scroll naar edit row met offset zodat het in het midden van scherm komt
-window.addEventListener('DOMContentLoaded', function() {
+function scrollToAnchor() {
   const hash = window.location.hash;
   if (hash) {
     const element = document.querySelector(hash);
     if (element) {
-      // Wacht kort zodat pagina volledig geladen is
-      setTimeout(function() {
-        const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-        const offsetPosition = elementPosition - (window.innerHeight / 2) + (element.offsetHeight / 2);
-        
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: 'smooth'
-        });
-      }, 100);
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - (window.innerHeight / 2) + (element.offsetHeight / 2);
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
     }
   }
+}
+
+// Probeer meerdere keren om te scrollen
+window.addEventListener('DOMContentLoaded', function() {
+  setTimeout(scrollToAnchor, 50);
+  setTimeout(scrollToAnchor, 150);
+  setTimeout(scrollToAnchor, 300);
+});
+
+// Extra check voor als DOMContentLoaded al gefired is
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  setTimeout(scrollToAnchor, 50);
+  setTimeout(scrollToAnchor, 150);
+  setTimeout(scrollToAnchor, 300);
+}
+
+// Ook luisteren naar load event (na alle afbeeldingen/resources)
+window.addEventListener('load', function() {
+  setTimeout(scrollToAnchor, 50);
 });
 </script>
 
