@@ -12,6 +12,36 @@
   <a class="btn-secondary" href="{{ url_for('main.reserve', building_id=saved.building_id, floor=saved.floor, date=saved.date, start_time=saved.start_time, end_time=saved.end_time) }}">← Wijzig criteria</a>
 </div>
 
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+  <form method="get" action="{{ url_for('main.available') }}" style="display:flex;align-items:center;gap:8px">
+    <input type="hidden" name="building_id" value="{{ saved.building_id }}">
+    <input type="hidden" name="floor" value="{{ saved.floor }}">
+    <input type="hidden" name="date" value="{{ saved.date }}">
+    <input type="hidden" name="start_time" value="{{ saved.start_time }}">
+    <input type="hidden" name="end_time" value="{{ saved.end_time }}">
+
+    <label style="font-weight:600;margin-right:6px">Filters:</label>
+
+    <select name="monitor" aria-label="Filter monitor" style="padding:6px;border-radius:6px;border:1px solid var(--muted);background:white">
+      <option value="" {% if not saved.monitor %}selected{% endif %}>Alle monitors</option>
+      <option value="single" {% if saved.monitor == 'single' %}selected{% endif %}>Single</option>
+      <option value="dual" {% if saved.monitor == 'dual' %}selected{% endif %}>Dual</option>
+      <option value="triple" {% if saved.monitor == 'triple' %}selected{% endif %}>Triple</option>
+    </select>
+
+    <select name="chair" aria-label="Filter stoel" style="padding:6px;border-radius:6px;border:1px solid var(--muted);background:white">
+      <option value="" {% if not saved.chair %}selected{% endif %}>Alle stoelen</option>
+      <option value="standard" {% if saved.chair == 'standard' %}selected{% endif %}>Standard</option>
+      <option value="ergonomic" {% if saved.chair == 'ergonomic' %}selected{% endif %}>Ergonomic</option>
+      <option value="standing desk" {% if saved.chair == 'standing desk' %}selected{% endif %}>Standing desk</option>
+    </select>
+
+    <button class="btn" type="submit" style="padding:6px 12px">Toepassen</button>
+  </form>
+
+  <a class="btn-secondary" href="{{ url_for('main.available', building_id=saved.building_id, floor=saved.floor, date=saved.date, start_time=saved.start_time, end_time=saved.end_time) }}">Wis filters</a>
+</div>
+
 {% if desks %}
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px">
   {% for desk in desks %}

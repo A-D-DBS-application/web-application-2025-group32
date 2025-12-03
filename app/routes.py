@@ -217,6 +217,30 @@ def available():
 
     candidate_desks = q.all()
 
+    # Extra filters: monitor & chair (via query params on this page)
+    monitor_filter = (request.args.get("monitor") or "").strip().lower()
+    chair_filter = (request.args.get("chair") or "").strip().lower()
+
+    # Values stored in the DB are like 'single monitor', 'dual monitor', 'triple monitor'.
+    # Allow the short tokens 'single'|'dual'|'triple' to match those via substring.
+    allowed_monitors = {"single", "dual", "triple"}
+    allowed_chairs = {"standard", "ergonomic", "standing desk"}
+
+    if monitor_filter:
+        if monitor_filter in allowed_monitors:
+            # Use case-insensitive substring match
+            candidate_desks = [d for d in candidate_desks if monitor_filter in (d.screen or "").strip().lower()]
+        else:
+            # unknown monitor filter -> no results
+            candidate_desks = []
+
+    if chair_filter:
+        if chair_filter in allowed_chairs:
+            # Use case-insensitive substring match
+            candidate_desks = [d for d in candidate_desks if chair_filter in (d.chair or "").strip().lower()]
+        else:
+            candidate_desks = []
+
     # Filter: verwijder bureaus met overlappende reservaties
     available_desks = []
     for desk in candidate_desks:
@@ -250,6 +274,8 @@ def available():
         "date": date_str,
         "start_time": start_str,
         "end_time": end_str,
+        "monitor": request.args.get("monitor", "") or "",
+        "chair": request.args.get("chair", "") or "",
     }
 
     # Safe get for buildings list
