@@ -77,8 +77,8 @@ class Reservation(db.Model):
     """
     __tablename__ = "reservation"
     res_id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.user_id"), nullable=False)
-    desk_id = db.Column(db.Integer, db.ForeignKey("desk.desk_id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.user_id", ondelete='CASCADE'), nullable=False)
+    desk_id = db.Column(db.Integer, db.ForeignKey("desk.desk_id", ondelete='CASCADE'), nullable=False)
     starttijd = db.Column(db.DateTime, nullable=False)  # Begintijd met datum
     eindtijd = db.Column(db.DateTime, nullable=False)  # Eindtijd met datum
     
@@ -97,7 +97,7 @@ class Feedback(db.Model):
     """
     __tablename__ = "Feedback"
     feedback_id = db.Column(db.Integer, primary_key=True)
-    reservation_id = db.Column(db.Integer, db.ForeignKey("reservation.res_id"), nullable=False)
+    reservation_id = db.Column(db.Integer, db.ForeignKey("reservation.res_id", ondelete='CASCADE'), nullable=False)
     netheid_score = db.Column(db.SmallInteger)  # Netheid score (1-5)
     wifi_score = db.Column(db.SmallInteger)  # Wifi score (1-5)
     ruimte_score = db.Column(db.SmallInteger)  # Ruimte score (1-5)
