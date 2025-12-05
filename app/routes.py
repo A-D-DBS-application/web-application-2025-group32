@@ -963,14 +963,15 @@ def admin_delete_reservation(res_id):
 @main.route('/admin/reservations')
 @require_admin
 def admin_reservations_overview():
-    """Admin overzicht van alle toekomstige reservaties"""
+    """Admin overzicht van alle toekomstige reservaties met verdachte reservaties gemarkeerd"""
     user = get_current_user()
     
     try:
         # Haal alle toekomstige reservaties op met user, desk en building info
         now = datetime.now()
-        reservations = db.session.query(
+        reservations_raw = db.session.query(
             Reservation.res_id,
+            Reservation.user_id,
             Reservation.starttijd,
             Reservation.eindtijd,
             User.user_name,
@@ -984,14 +985,64 @@ def admin_reservations_overview():
         ).filter(Reservation.starttijd >= now
         ).order_by(Reservation.starttijd).all()
         
+        # Identificeer verdachte reservaties
+        reservations = []
+        suspicious_count = 0
+        
+        for res in reservations_raw:
+            is_suspicious = False
+            suspicious_reasons = []
+            
+            # Check 1: Start voor 6:00
+            if res.starttijd.time().hour < 6:
+                is_suspicious = True
+                suspicious_reasons.append("Start voor 6:00 uur")
+            
+            # Check 2: Eind na 22:00
+            if res.eindtijd.time().hour >= 22 or (res.eindtijd.time().hour == 21 and res.eindtijd.time().minute > 0):
+                is_suspicious = True
+                suspicious_reasons.append("Loopt tot na 22:00 uur")
+            
+            # Check 3: Meerdere reservaties op hetzelfde moment
+            overlapping = db.session.query(Reservation).filter(
+                Reservation.user_id == res.user_id,
+                Reservation.res_id != res.res_id,
+                Reservation.starttijd < res.eindtijd,
+                res.starttijd < Reservation.eindtijd
+            ).first()
+            
+            if overlapping:
+                is_suspicious = True
+                suspicious_reasons.append("Meerdere reservaties tegelijk")
+            
+            if is_suspicious:
+                suspicious_count += 1
+            
+            # Maak een dictionary van de reservatie data
+            reservations.append({
+                'res_id': res.res_id,
+                'user_id': res.user_id,
+                'starttijd': res.starttijd,
+                'eindtijd': res.eindtijd,
+                'user_name': res.user_name,
+                'user_last_name': res.user_last_name,
+                'user_email': res.user_email,
+                'desk_number': res.desk_number,
+                'building_adress': res.building_adress,
+                'is_suspicious': is_suspicious,
+                'suspicious_reasons': suspicious_reasons
+            })
+        
     except Exception as e:
         flash(f"Fout bij ophalen reservaties: {str(e)}")
         reservations = []
+        suspicious_count = 0
     
     return render_template('admin_reservations_overview.html',
                          user=user,
                          is_admin=True,
-                         reservations=reservations)
+                         reservations=reservations,
+                         suspicious_count=suspicious_count)
 
 
 @main.route('/admin/reservation/edit/<int:res_id>', methods=['GET', 'POST'])
