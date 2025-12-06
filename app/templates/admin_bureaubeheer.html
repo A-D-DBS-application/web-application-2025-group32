@@ -78,7 +78,7 @@
               {% for building in buildings %}
                 <option value="{{ building.id }}">{{ building.naam }}</option>
               {% endfor %}
-              <option value="other">Andere...</option>
+              <option value="other">Nieuw...</option>
             </select>
             <input type="text" name="building_other" id="building-other-new" placeholder="Nieuw gebouw naam"
                    style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
@@ -93,7 +93,7 @@
               {% for screen in screens %}
                 <option value="{{ screen }}">{{ screen }}</option>
               {% endfor %}
-              <option value="other">Andere...</option>
+              <option value="other">Nieuw...</option>
             </select>
             <input type="text" name="screen_other" id="screen-other-new" placeholder="Nieuw scherm type"
                    style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
@@ -108,7 +108,7 @@
               {% for chair in chairs %}
                 <option value="{{ chair }}">{{ chair }}</option>
               {% endfor %}
-              <option value="other">Andere...</option>
+              <option value="other">Nieuw...</option>
             </select>
             <input type="text" name="chair_other" id="chair-other-new" placeholder="Nieuw stoel type"
                    style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
@@ -123,7 +123,7 @@
               {% for dienst in diensten %}
                 <option value="{{ dienst.naam }}">{{ dienst.naam }}</option>
               {% endfor %}
-              <option value="other">Andere...</option>
+              <option value="other">Nieuw...</option>
             </select>
             <input type="text" name="dienst_other" id="dienst-other-new" placeholder="Nieuwe dienst naam"
                    style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
@@ -187,7 +187,7 @@
                             {{ building.naam }}
                           </option>
                         {% endfor %}
-                        <option value="other">Andere...</option>
+                        <option value="other">Nieuw...</option>
                       </select>
                       <input type="text" name="building_other" id="building-other-{{ desk.desk_id }}" placeholder="Nieuw gebouw naam"
                              style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
@@ -203,7 +203,7 @@
                             {{ screen }}
                           </option>
                         {% endfor %}
-                        <option value="other">Andere...</option>
+                        <option value="other">Nieuw...</option>
                       </select>
                       <input type="text" name="screen_other" id="screen-other-{{ desk.desk_id }}" placeholder="Nieuw scherm type"
                              style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
@@ -219,7 +219,7 @@
                             {{ chair }}
                           </option>
                         {% endfor %}
-                        <option value="other">Andere...</option>
+                        <option value="other">Nieuw...</option>
                       </select>
                       <input type="text" name="chair_other" id="chair-other-{{ desk.desk_id }}" placeholder="Nieuw stoel type"
                              style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
@@ -236,7 +236,7 @@
                             {{ dienst.naam }}
                           </option>
                         {% endfor %}
-                        <option value="other">Andere...</option>
+                        <option value="other">Nieuw...</option>
                       </select>
                       <input type="text" name="dienst_other" id="dienst-other-{{ desk.desk_id }}" placeholder="Nieuwe dienst naam"
                              style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
