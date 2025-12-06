@@ -204,38 +204,46 @@
                   <input type="number" name="desk_number" value="{{ desk.desk_number }}" min="1" required class="edit-input-number" />
                 </td>
                 <td class="desk-cell">
-                  <select name="building_id" class="edit-select" required>
+                  <select name="building_id" id="building-edit-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'building-other-edit-{{ desk.desk_id }}')" class="edit-select" required>
                     {% for building in buildings %}
                       <option value="{{ building.id }}" {% if desk.building_id == building.id %}selected{% endif %}>{{ building.naam }}</option>
                     {% endfor %}
+                    <option value="other">Nieuw...</option>
                   </select>
+                  <input type="text" name="building_other" id="building-other-edit-{{ desk.desk_id }}" placeholder="Nieuw gebouw" class="edit-input-other" style="display:none;margin-top:4px" />
                 </td>
                 <td class="desk-cell">
                   <input type="number" name="building_floor" value="{{ desk.building_floor if desk.building_floor is not none else '' }}" min="0" max="20" required class="edit-input-floor" />
                 </td>
                 <td class="desk-cell-muted">
-                  <select name="screen" class="edit-select">
+                  <select name="screen" id="screen-edit-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'screen-other-edit-{{ desk.desk_id }}')" class="edit-select">
                     <option value="">-- Geen --</option>
                     {% for screen in screens %}
                       <option value="{{ screen }}" {% if desk.screen == screen %}selected{% endif %}>{{ screen }}</option>
                     {% endfor %}
+                    <option value="other">Nieuw...</option>
                   </select>
+                  <input type="text" name="screen_other" id="screen-other-edit-{{ desk.desk_id }}" placeholder="Nieuw scherm" class="edit-input-other" style="display:none;margin-top:4px" />
                 </td>
                 <td class="desk-cell-muted">
-                  <select name="chair" class="edit-select">
+                  <select name="chair" id="chair-edit-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'chair-other-edit-{{ desk.desk_id }}')" class="edit-select">
                     <option value="">-- Geen --</option>
                     {% for chair in chairs %}
                       <option value="{{ chair }}" {% if desk.chair == chair %}selected{% endif %}>{{ chair }}</option>
                     {% endfor %}
+                    <option value="other">Nieuw...</option>
                   </select>
+                  <input type="text" name="chair_other" id="chair-other-edit-{{ desk.desk_id }}" placeholder="Nieuwe stoel" class="edit-input-other" style="display:none;margin-top:4px" />
                 </td>
                 <td class="desk-cell">
-                  <select name="dienst" class="edit-select">
-                    <option value="">Geen dienst</option>
+                  <select name="dienst_id" id="dienst-edit-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'dienst-other-edit-{{ desk.desk_id }}')" class="edit-select">
+                    <option value="None">Geen dienst</option>
                     {% for dienst in diensten %}
                       <option value="{{ dienst.naam }}" {% if desk.dienst == dienst.naam %}selected{% endif %}>{{ dienst.naam }}</option>
                     {% endfor %}
+                    <option value="other">Nieuw...</option>
                   </select>
+                  <input type="text" name="dienst_other" id="dienst-other-edit-{{ desk.desk_id }}" placeholder="Nieuwe dienst" class="edit-input-other" style="display:none;margin-top:4px" />
                 </td>
                 <td style="padding:16px;text-align:center">
                   <button type="submit" class="btn edit-btn-save">Opslaan</button>
@@ -259,14 +267,9 @@
               </td>
               <td style="padding:16px;text-align:center">
                 <a href="{{ url_for('main.admin_dashboard', edit=desk.desk_id, _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:8px 16px;margin-right:8px;text-decoration:none;display:inline-block">Wijzigen</a>
-                {% if confirm_delete and confirm_delete == desk.desk_id %}
-                  <form method="POST" action="{{ url_for('main.admin_delete_desk', desk_id=desk.desk_id) }}" style="display:inline-block">
-                    <button type="submit" class="btn" style="padding:8px 16px;background:#f44336;margin-right:4px">Bevestig verwijderen</button>
-                    <a href="{{ url_for('main.admin_dashboard', _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:6px 12px;background:#94a3b8;text-decoration:none;font-size:0.85rem">Annuleer</a>
-                  </form>
-                {% else %}
-                  <a href="{{ url_for('main.admin_dashboard', delete=desk.desk_id, _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:8px 16px;background:#f44336;text-decoration:none;display:inline-block">Verwijder</a>
-                {% endif %}
+                <form method="POST" action="{{ url_for('main.admin_delete_desk', desk_id=desk.desk_id) }}" style="display:inline-block" onsubmit="return confirm('Ben je zeker dat je bureau {{ desk.desk_number }} wilt verwijderen?');">
+                  <button type="submit" class="btn" style="padding:8px 16px;background:#f44336;text-decoration:none">Verwijder</button>
+                </form>
               </td>
             </tr>
             {% endif %}

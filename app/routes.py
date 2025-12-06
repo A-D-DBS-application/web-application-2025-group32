@@ -635,9 +635,8 @@ def admin_dashboard():
     """Admin dashboard - bureaus beheren en koppelen aan diensten"""
     user = get_current_user()
     
-    # Check voor edit mode, delete confirmation, en add new parameters
+    # Check voor edit mode en add new parameters
     edit_desk_id = request.args.get('edit', type=int)
-    confirm_delete = request.args.get('delete', type=int)
     add_new = request.args.get('add_new', type=int)
     
     try:
@@ -733,7 +732,6 @@ def admin_dashboard():
                          edit_mode=edit_desk_id is not None,
                          edit_desk_id=edit_desk_id,
                          edit_desk_number=edit_desk_number,
-                         confirm_delete=confirm_delete,
                          add_new=add_new,
                          is_admin=True)
 
