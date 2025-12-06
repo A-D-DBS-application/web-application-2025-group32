@@ -201,9 +201,11 @@
             <tr id="desk-{{ desk.desk_id }}" class="desk-row-edit">
               <form method="POST" action="{{ url_for('main.admin_update_desk', desk_id=desk.desk_id) }}" id="edit-form-{{ desk.desk_id }}">
                 <td class="desk-cell-primary">
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#64748b;margin-bottom:4px">Bureau</label>
                   <input type="number" name="desk_number" value="{{ desk.desk_number }}" min="1" required class="edit-input-number" />
                 </td>
                 <td class="desk-cell">
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#64748b;margin-bottom:4px">Gebouw</label>
                   <select name="building_id" id="building-edit-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'building-other-edit-{{ desk.desk_id }}')" class="edit-select" required>
                     {% for building in buildings %}
                       <option value="{{ building.id }}" {% if desk.building_id == building.id %}selected{% endif %}>{{ building.naam }}</option>
@@ -213,9 +215,11 @@
                   <input type="text" name="building_other" id="building-other-edit-{{ desk.desk_id }}" placeholder="Nieuw gebouw" class="edit-input-other" style="display:none;margin-top:4px" />
                 </td>
                 <td class="desk-cell">
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#64748b;margin-bottom:4px">Verdieping</label>
                   <input type="number" name="building_floor" value="{{ desk.building_floor if desk.building_floor is not none else '' }}" min="0" max="20" required class="edit-input-floor" />
                 </td>
                 <td class="desk-cell-muted">
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#64748b;margin-bottom:4px">Scherm</label>
                   <select name="screen" id="screen-edit-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'screen-other-edit-{{ desk.desk_id }}')" class="edit-select">
                     <option value="">-- Geen --</option>
                     {% for screen in screens %}
@@ -226,6 +230,7 @@
                   <input type="text" name="screen_other" id="screen-other-edit-{{ desk.desk_id }}" placeholder="Nieuw scherm" class="edit-input-other" style="display:none;margin-top:4px" />
                 </td>
                 <td class="desk-cell-muted">
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#64748b;margin-bottom:4px">Stoel</label>
                   <select name="chair" id="chair-edit-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'chair-other-edit-{{ desk.desk_id }}')" class="edit-select">
                     <option value="">-- Geen --</option>
                     {% for chair in chairs %}
@@ -236,6 +241,7 @@
                   <input type="text" name="chair_other" id="chair-other-edit-{{ desk.desk_id }}" placeholder="Nieuwe stoel" class="edit-input-other" style="display:none;margin-top:4px" />
                 </td>
                 <td class="desk-cell">
+                  <label style="display:block;font-size:0.75rem;font-weight:600;color:#64748b;margin-bottom:4px">Dienst</label>
                   <select name="dienst_id" id="dienst-edit-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'dienst-other-edit-{{ desk.desk_id }}')" class="edit-select">
                     <option value="None">Geen dienst</option>
                     {% for dienst in diensten %}
