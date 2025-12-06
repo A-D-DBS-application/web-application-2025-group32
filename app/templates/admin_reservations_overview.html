@@ -8,15 +8,27 @@
 {% endblock %}
 
 {% block content %}
-<div style="margin-bottom: 24px; display: flex; gap: 12px; align-items: center;">
-    <a href="{{ url_for('home') }}" class="btn btn-ghost">Terug naar Home</a>
-    <a href="{{ url_for('main.admin_create_reservation') }}" class="btn">Nieuwe Reservatie Aanmaken</a>
-    {% if suspicious_count > 0 %}
-    <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 8px 16px; border-radius: 6px; margin-left: auto;">
-        <span style="color: #856404; font-weight: 600;">⚠️ {{ suspicious_count }} verdachte reservatie{{ 's' if suspicious_count != 1 else '' }}</span>
-    </div>
-    {% endif %}
+<div class="admin-reservaties-actions">
+        <a href="{{ url_for('home') }}" class="btn btn-ghost">Terug naar Home</a>
+        <a href="{{ url_for('main.admin_create_reservation') }}" class="btn">Nieuwe Reservatie Aanmaken</a>
+        {% if suspicious_count > 0 %}
+        <div class="suspicious-badge">
+                <span>⚠️ {{ suspicious_count }} verdachte reservatie{{ 's' if suspicious_count != 1 else '' }}</span>
+        </div>
+        {% endif %}
 </div>
+<style>
+    .admin-reservaties-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
+    .suspicious-badge { background: #fff3cd; border: 1px solid #ffc107; padding: 8px 16px; border-radius: 6px; color: #856404; font-weight: 600; margin-left: auto; }
+    @media (max-width: 900px) {
+        .admin-reservaties-actions { flex-direction: column; gap: 8px; align-items: stretch; }
+        .btn, .btn-ghost { width: 100%; font-size: 16px; }
+        .suspicious-badge { margin-left: 0; margin-top: 8px; }
+        .card { padding: 14px; }
+        table { display: block; overflow-x: auto; font-size: 13px; }
+        th, td { font-size: 13px; padding: 8px 4px; }
+    }
+</style>
 
 <div class="card">
     <h2 style="margin-top: 0;">Alle Toekomstige Reservaties</h2>

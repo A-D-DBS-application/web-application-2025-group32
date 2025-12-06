@@ -1,80 +1,128 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Reservatie Aanmaken - Admin</title>
-</head>
-<body>
-    <h1>Nieuwe Reservatie Aanmaken</h1>
-    
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for msg in messages %}
-                <p style="color: red;">{{ msg }}</p>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-    
-    <form method="POST">
-        <label>Gebruiker:</label>
-        <select name="user_id" required>
-            <option value="">-- Selecteer gebruiker --</option>
-            {% for u in all_users %}
-                <option value="{{ u.user_id }}">{{ u.user_name }} {{ u.user_last_name }} ({{ u.user_email }})</option>
-            {% endfor %}
-        </select><br>
-        
-        <label>Gebouw:</label>
-        <select name="building_id" id="building_select" required>
-            <option value="">-- Selecteer gebouw --</option>
-            {% for b in buildings %}
-                <option value="{{ b.building_id }}">{{ b.adress }}</option>
-            {% endfor %}
-        </select><br>
-        
-        <label>Bureau:</label>
-        <select name="desk_id" id="desk_select" required>
-            <option value="">-- Eerst gebouw selecteren --</option>
-        </select><br>
-        
-        <label>Datum:</label>
-        <input type="date" name="date" required><br>
-        
-        <label>Starttijd:</label>
-        <input type="time" name="start_time" required><br>
-        
-        <label>Eindtijd:</label>
-        <input type="time" name="end_time" required><br>
-        
-        <button type="submit">Reservatie Aanmaken</button>
-        <a href="{{ url_for('admin_reservations_overview') }}">Annuleren</a>
-    </form>
-    
-    <script>
-        document.getElementById('building_select').addEventListener('change', function() {
-            const buildingId = this.value;
-            const deskSelect = document.getElementById('desk_select');
-            
-            if (!buildingId) {
-                deskSelect.innerHTML = '<option value="">-- Eerst gebouw selecteren --</option>';
-                return;
+
+
+{% extends 'base.html' %}
+
+{% block title %}Nieuwe Reservatie Aanmaken - Admin{% endblock %}
+
+{% block hero %}
+    <h1 style="margin:0;font-size:2.2rem">Nieuwe Reservatie</h1>
+    <p style="margin:8px 0 0 0;opacity:0.95">Maak een reservatie voor een gebruiker</p>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;margin:0 auto">
+    <div class="card" style="padding:24px">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for msg in messages %}
+                    <div class="flash-item">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <div style="display:grid;gap:20px">
+                <div>
+                    <label class="small">Gebruiker</label>
+                    <select name="user_id" required>
+                        <option value="">-- Selecteer gebruiker --</option>
+                        {% for u in all_users %}
+                            <option value="{{ u.user_id }}" {% if saved and saved.user_id|string == u.user_id|string %}selected{% endif %}>{{ u.user_name }} {{ u.user_last_name }} ({{ u.user_email }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="small">Gebouw</label>
+                    <select name="building_id" id="building_select" required>
+                        <option value="">-- Selecteer gebouw --</option>
+                        {% for b in buildings %}
+                            <option value="{{ b.building_id }}" {% if saved and saved.building_id|string == b.building_id|string %}selected{% endif %}>{{ b.adress }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="small">Bureau</label>
+                    <select name="desk_id" id="desk_select" required>
+                        <option value="">-- Eerst gebouw selecteren --</option>
+                        {% if desks and saved and saved.desk_id %}
+                            {% for desk in desks %}
+                                <option value="{{ desk.desk_id }}" {% if saved.desk_id|string == desk.desk_id|string %}selected{% endif %}>Bureau {{ desk.desk_number }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                <div>
+                    <label class="small">Datum</label>
+                      <input type="date" name="date" value="{{ saved.date if saved else '' }}" required>
+                </div>
+                <div class="time-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                    <div>
+                        <label class="small">Begintijd</label>
+                        <input type="time" name="start_time" value="{{ saved.start_time if saved else '' }}" required />
+                    </div>
+                    <div>
+                        <label class="small">Eindtijd</label>
+                        <input type="time" name="end_time" value="{{ saved.end_time if saved else '' }}" required />
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:8px">
+                    <button class="btn" type="submit" style="min-width:220px;width:100%;max-width:320px;margin-bottom:10px">Reservatie Aanmaken</button>
+                    <a href="{{ url_for('main.admin_reservations_overview') }}" class="btn" style="background:#94a3b8;width:100%;max-width:320px">Annuleren</a>
+                </div>
+            <style>
+            @media (max-width: 600px) {
+                .card {
+                    padding: 10px 4px !important;
+                    border-radius: 12px;
+                }
+                .time-row {
+                    grid-template-columns: 1fr !important;
+                    gap: 10px !important;
+                }
+                select, input[type="date"], input[type="time"] {
+                    font-size: 16px !important;
+                    padding: 12px 8px !important;
+                    margin-bottom: 14px !important;
+                }
+                label.small {
+                    font-size: 15px !important;
+                    margin-bottom: 4px !important;
+                }
+                .btn {
+                    font-size: 16px !important;
+                    padding: 14px 0 !important;
+                    width: 100% !important;
+                    min-width: unset !important;
+                    margin-left: 0 !important;
+                }
             }
-            
-            fetch(`/api/desks?building_id=${buildingId}`)
-                .then(res => res.json())
-                .then(desks => {
-                    deskSelect.innerHTML = '<option value="">-- Selecteer bureau --</option>';
-                    desks.forEach(desk => {
-                        const option = document.createElement('option');
-                        option.value = desk.desk_id;
-                        option.textContent = `Bureau ${desk.desk_number}`;
-                        deskSelect.appendChild(option);
-                    });
-                })
-                .catch(err => {
-                    console.error('Error loading desks:', err);
-                    deskSelect.innerHTML = '<option value="">Fout bij laden bureaus</option>';
-                });
+            </style>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+        document.getElementById('building_select').addEventListener('change', function() {
+                const buildingId = this.value;
+                const deskSelect = document.getElementById('desk_select');
+                if (!buildingId) {
+                        deskSelect.innerHTML = '<option value="">-- Eerst gebouw selecteren --</option>';
+                        return;
+                }
+                fetch(`/api/desks?building_id=${buildingId}`)
+                        .then(res => res.json())
+                        .then(desks => {
+                                deskSelect.innerHTML = '<option value="">-- Selecteer bureau --</option>';
+                                desks.forEach(desk => {
+                                        const option = document.createElement('option');
+                                        option.value = desk.desk_id;
+                                        option.textContent = `Bureau ${desk.desk_number}`;
+                                        deskSelect.appendChild(option);
+                                });
+                        })
+                        .catch(err => {
+                                console.error('Error loading desks:', err);
+                                deskSelect.innerHTML = '<option value="">Fout bij laden bureaus</option>';
+                        });
         });
-    </script>
-</body>
-</html>
+</script>
+{% endblock %}

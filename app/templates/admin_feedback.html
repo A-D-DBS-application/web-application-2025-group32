@@ -42,16 +42,16 @@
     </div>
     <a href="#onvoldoende-section" class="metric" style="text-decoration: none; color: inherit;">
       <div class="metric-value">
-        {{ analysis.urgency_distribution.onvoldoende }}
+        {{ analysis.urgency_distribution.onvoldoende if analysis.urgency_distribution is defined and analysis.urgency_distribution.onvoldoende is defined else 0 }}
       </div>
       <div class="metric-label">Onvoldoende</div>
     </a>
     <a href="#voldoende-section" class="metric" style="text-decoration: none; color: inherit;">
-      <div class="metric-value">{{ analysis.urgency_distribution.voldoende }}</div>
+      <div class="metric-value">{{ analysis.urgency_distribution.voldoende if analysis.urgency_distribution is defined and analysis.urgency_distribution.voldoende is defined else 0 }}</div>
       <div class="metric-label">Voldoende</div>
     </a>
     <a href="#uitstekend-section" class="metric" style="text-decoration: none; color: inherit;">
-      <div class="metric-value">{{ analysis.urgency_distribution.uitstekend }}</div>
+      <div class="metric-value">{{ analysis.urgency_distribution.uitstekend if analysis.urgency_distribution is defined and analysis.urgency_distribution.uitstekend is defined else 0 }}</div>
       <div class="metric-label">Uitstekend</div>
     </a>
   </div>

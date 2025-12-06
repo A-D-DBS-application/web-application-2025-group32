@@ -17,7 +17,7 @@
           <select name="building_id">
             <option value="">-- Alle gebouwen --</option>
             {% for building in buildings %}
-              <option value="{{ building.adress }}" {% if saved.building_id|string == building.adress|string %}selected{% endif %}>{{ building.adress }}</option>
+              <option value="{{ building.adress }}" {% if saved and saved.building_id|string == building.adress|string %}selected{% endif %}>{{ building.adress }}</option>
             {% endfor %}
           </select>
         </div>
@@ -26,22 +26,22 @@
           <select name="floor">
             <option value="">-- Alle verdiepingen --</option>
             {% for f in floors %}
-              <option value="{{ f }}" {% if saved.floor|string == f|string %}selected{% endif %}>Verdieping {{ f }}</option>
+              <option value="{{ f }}" {% if saved and saved.floor|string == f|string %}selected{% endif %}>Verdieping {{ f }}</option>
             {% endfor %}
           </select>
         </div>
         <div>
           <label class="small">Datum</label>
-          <input type="date" name="date" value="{{ saved.date }}" required />
+          <input type="date" name="date" value="{{ saved.date if saved else '' }}" required />
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div>
             <label class="small">Begintijd</label>
-            <input type="time" name="start_time" value="{{ saved.start_time }}" required />
+            <input type="time" name="start_time" value="{{ saved.start_time if saved else '' }}" required />
           </div>
           <div>
             <label class="small">Eindtijd</label>
-            <input type="time" name="end_time" value="{{ saved.end_time }}" required />
+            <input type="time" name="end_time" value="{{ saved.end_time if saved else '' }}" required />
           </div>
         </div>
         <div style="text-align:center;margin-top:8px">

@@ -10,7 +10,24 @@
 {% block content %}
 <div class="card">
   {% if reservations and reservations|length > 0 %}
-  <table class="data-table">
+  <table class="data-table mijn-table">
+    <style>
+      .mijn-table th, .mijn-table td { font-size: 15px; }
+      @media (max-width: 700px) {
+        .mijn-table th, .mijn-table td { font-size: 13px; padding: 8px 4px; }
+        .mijn-table th { white-space: nowrap; }
+        .mijn-table td { word-break: break-word; }
+        .card { padding: 14px; }
+        .btn, .btn-secondary, button { font-size: 16px; }
+        .actions-cell { flex-direction: row !important; gap: 8px !important; }
+        .actions-cell .btn, .actions-cell button {
+          width: auto !important;
+          display: inline-flex !important;
+          margin-bottom: 0 !important;
+        }
+        .mijn-table { display: block; overflow-x: auto; }
+      }
+    </style>
     <thead>
       <tr>
         <th>Reservatie ID</th>
@@ -38,9 +55,11 @@
         <td style="border-top:none;padding-top:4px;">{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }}</td>
         <td style="border-top:none;padding-top:4px;">{{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
         <td style="border-top:none;padding-top:4px;">
-          <form method="post" action="{{ url_for('main.cancel_reservation', res_id=r.res_id) }}" onsubmit="return confirm('Weet je zeker dat je deze reservatie wilt annuleren?');" style="display:inline">
-            <button type="submit" style="padding:8px 16px;font-size:0.9rem;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">✕ Annuleer</button>
-          </form>
+          <div class="actions-cell" style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;">
+            <form method="post" action="{{ url_for('main.cancel_reservation', res_id=r.res_id) }}" onsubmit="return confirm('Weet je zeker dat je deze reservatie wilt annuleren?');" style="display:inline">
+              <button type="submit" style="padding:8px 16px;font-size:0.9rem;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">✕ Annuleer</button>
+            </form>
+          </div>
         </td>
       </tr>
       {% else %}
@@ -52,9 +71,11 @@
         <td>{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }}</td>
         <td>{{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
         <td>
-          <form method="post" action="{{ url_for('main.cancel_reservation', res_id=r.res_id) }}" onsubmit="return confirm('Weet je zeker dat je deze reservatie wilt annuleren?');" style="display:inline">
-            <button type="submit" style="padding:8px 16px;font-size:0.9rem;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">✕ Annuleer</button>
-          </form>
+          <div class="actions-cell" style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;">
+            <form method="post" action="{{ url_for('main.cancel_reservation', res_id=r.res_id) }}" onsubmit="return confirm('Weet je zeker dat je deze reservatie wilt annuleren?');" style="display:inline">
+              <button type="submit" style="padding:8px 16px;font-size:0.9rem;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">✕ Annuleer</button>
+            </form>
+          </div>
         </td>
       </tr>
       {% endif %}

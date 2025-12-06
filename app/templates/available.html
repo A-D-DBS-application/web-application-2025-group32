@@ -47,7 +47,36 @@
 </div>
 
 {% if desks %}
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px">
+<div class="available-grid">
+  <style>
+    .available-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    @media (max-width: 700px) {
+      .available-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      .card {
+        padding: 14px;
+      }
+      .btn, .btn-secondary {
+        width: 100%;
+        margin-bottom: 8px;
+      }
+      form {
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100%;
+      }
+      select, input {
+        width: 100%;
+        font-size: 16px;
+      }
+    }
+  </style>
   {% for desk in desks %}
   <div class="card">
     <h3 style="margin:0 0 10px 0;color:var(--primary)">Bureau {{ desk.desk_number }}</h3>

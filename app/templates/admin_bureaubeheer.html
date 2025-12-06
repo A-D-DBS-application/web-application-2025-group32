@@ -8,7 +8,30 @@
 {% endblock %}
 
 {% block content %}
-<div style="max-width:1400px;margin:0 auto">
+<div class="container main-content bureaubeheer-content">
+  <style>
+    .bureaubeheer-content .card { margin-bottom: 24px; }
+    .metrics-grid, .insight-box, .feedback-section, .section-header { width: 100%; }
+    table { width: 100%; border-collapse: collapse; table-layout: auto; }
+    th, td { font-size: 15px; padding: 12px 10px; vertical-align: middle; white-space: normal; word-break: normal; }
+    .desk-row, .desk-row-edit { border-bottom: 1px solid #e5e7eb; }
+    .desk-row-edit { background: #fffbeb; }
+    .edit-field-wrapper label { font-size: 0.85rem; color: #64748b; margin-bottom: 4px; font-weight: 500; }
+    .edit-input-number, .edit-input-other, .edit-input-floor, .edit-select { width: 100%; font-size: 15px; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb; margin-bottom: 4px; }
+    .btn, .edit-btn-save, .edit-btn-cancel { font-size: 15px; padding: 10px 16px; margin-bottom: 0; }
+    .dienst-badge { background: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .dienst-badge-none { background: #f3f4f6; color: #64748b; padding: 4px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    @media (max-width: 900px) {
+      .bureaubeheer-content { padding: 0 6px; }
+      .card { padding: 14px; }
+      th, td { font-size: 13px; padding: 10px 6px; vertical-align: middle; white-space: normal; word-break: normal; }
+      .edit-field-wrapper label { font-size: 0.8rem; }
+      .btn, .edit-btn-save, .edit-btn-cancel { font-size: 14px; padding: 8px 10px; }
+      .edit-input-number, .edit-input-other, .edit-input-floor, .edit-select { font-size: 13px; padding: 7px; }
+      .dienst-badge, .dienst-badge-none { font-size: 12px; padding: 3px 8px; }
+      table { display: block; width: 100%; overflow-x: auto; }
+    }
+  </style>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, msg in messages %}
@@ -150,8 +173,8 @@
     {% endif %}
     
     {% if desks %}
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+      <div class="bureaus-table-wrapper">
+        <table class="bureaus-table" style="width:100%;border-collapse:collapse;table-layout:fixed">
           <colgroup>
             <col style="width:10%">
             <col style="width:8%">
@@ -176,136 +199,52 @@
             {% for desk in desks %}
             {% if edit_mode and edit_desk_id == desk.desk_id %}
             <tr id="desk-{{ desk.desk_id }}" class="desk-row-edit">
+              <td class="desk-cell-primary">{{ desk.desk_number }}</td>
+              <td class="desk-cell">{{ desk.building_adress }}</td>
+              <td class="desk-cell">{{ desk.building_floor if desk.building_floor is not none else '-' }}</td>
+              <td class="desk-cell-muted">{{ desk.screen }}</td>
+              <td class="desk-cell-muted">{{ desk.chair }}</td>
+              <td class="desk-cell">
+                {% if desk.dienst %}
+                  <span class="dienst-badge">{{ desk.dienst }}</span>
+                {% else %}
+                  <span class="dienst-badge-none">Geen dienst</span>
+                {% endif %}
+              </td>
+              <td style="padding:16px;text-align:center">
+                <form method="POST" action="{{ url_for('main.admin_update_desk', desk_id=desk.desk_id) }}" id="edit-form-{{ desk.desk_id }}" style="display:inline-block">
+                  <button type="submit" class="btn edit-btn-save">Opslaan</button>
+                  <a href="{{ url_for('main.admin_dashboard', _anchor='desk-' + desk.desk_id|string) }}" class="btn edit-btn-cancel">Annuleren</a>
+                </form>
+              </td>
+            </tr>
             {% else %}
             <tr id="desk-{{ desk.desk_id }}" class="desk-row">
-            {% endif %}
-              <td class="desk-cell-primary">
-                {% if edit_mode and edit_desk_id == desk.desk_id %}
-                  <div class="edit-field-wrapper">
-                    <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Bureau nummer</label>
-                    <input type="number" name="desk_number" value="{{ desk.desk_number }}" required min="1" step="1" form="edit-form-{{ desk.desk_id }}" class="edit-input-number">
-                  </div>
-                {% else %}
-                  {{ desk.desk_number }}
-                {% endif %}
-              </td>
+              <td class="desk-cell-primary">{{ desk.desk_number }}</td>
+              <td class="desk-cell">{{ desk.building_adress }}</td>
+              <td class="desk-cell">{{ desk.building_floor if desk.building_floor is not none else '-' }}</td>
+              <td class="desk-cell-muted">{{ desk.screen }}</td>
+              <td class="desk-cell-muted">{{ desk.chair }}</td>
               <td class="desk-cell">
-                {% if edit_mode and edit_desk_id == desk.desk_id %}
-                  <div class="edit-field-wrapper">
-                    <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Gebouw</label>
-                    <select name="building_id" id="building-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'building-other-{{ desk.desk_id }}')" form="edit-form-{{ desk.desk_id }}" class="edit-select">
-                      {% for building in buildings %}
-                        <option value="{{ building.id }}" {% if desk.building_id == building.id %}selected{% endif %}>{{ building.naam }}</option>
-                      {% endfor %}
-                      <option value="other">Nieuw...</option>
-                    </select>
-                    <input type="text" name="building_other" id="building-other-{{ desk.desk_id }}" placeholder="Nieuw gebouw" form="edit-form-{{ desk.desk_id }}" class="edit-input-other">
-                  </div>
+                {% if desk.dienst %}
+                  <span class="dienst-badge">{{ desk.dienst }}</span>
                 {% else %}
-                  {{ desk.building_adress }}
+                  <span class="dienst-badge-none">Geen dienst</span>
                 {% endif %}
               </td>
-              <td class="{% if edit_mode and edit_desk_id == desk.desk_id %}desk-cell-edit{% else %}desk-cell{% endif %}">
-                {% if edit_mode and edit_desk_id == desk.desk_id %}
-                  <div class="edit-field-wrapper">
-                    <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Verdieping</label>
-                    <input type="number" name="floor" value="{{ desk.building_floor if desk.building_floor is not none else 1 }}" required min="0" max="20" step="1" form="edit-form-{{ desk.desk_id }}" class="edit-input-floor">
-                  </div>
+              <td style="padding:16px;text-align:center">
+                <a href="{{ url_for('main.admin_dashboard', edit=desk.desk_id, _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:8px 16px;margin-right:8px;text-decoration:none;display:inline-block">Wijzigen</a>
+                {% if confirm_delete and confirm_delete == desk.desk_id %}
+                  <form method="POST" action="{{ url_for('main.admin_delete_desk', desk_id=desk.desk_id) }}" style="display:inline-block">
+                    <button type="submit" class="btn" style="padding:8px 16px;background:#f44336;margin-right:4px">Bevestig verwijderen</button>
+                    <a href="{{ url_for('main.admin_dashboard', _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:6px 12px;background:#94a3b8;text-decoration:none;font-size:0.85rem">Annuleer</a>
+                  </form>
                 {% else %}
-                  {% if desk.building_floor is not none %}
-                    {{ desk.building_floor }}
-                  {% else %}
-                    -
-                  {% endif %}
+                  <a href="{{ url_for('main.admin_dashboard', delete=desk.desk_id, _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:8px 16px;background:#f44336;text-decoration:none;display:inline-block">Verwijder</a>
                 {% endif %}
               </td>
-              
-              {% if edit_mode and edit_desk_id == desk.desk_id %}
-                <!-- Edit mode - each field in its own column -->
-                <form method="POST" action="{{ url_for('main.admin_update_desk', desk_id=desk.desk_id) }}" id="edit-form-{{ desk.desk_id }}">
-                  <!-- Scherm kolom -->
-                  <td class="desk-cell">
-                    <div class="edit-field-wrapper">
-                      <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Scherm</label>
-                      <select name="screen" id="screen-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'screen-other-{{ desk.desk_id }}')" class="edit-select">
-                        {% for screen in screens %}
-                          <option value="{{ screen }}" {% if desk.screen|lower == screen|lower %}selected{% endif %}>{{ screen }}</option>
-                        {% endfor %}
-                        <option value="other">Nieuw...</option>
-                      </select>
-                      <input type="text" name="screen_other" id="screen-other-{{ desk.desk_id }}" placeholder="Nieuw scherm" class="edit-input-other">
-                    </div>
-                  </td>
-                  
-                  <!-- Stoel kolom -->
-                  <td class="desk-cell">
-                    <div class="edit-field-wrapper">
-                      <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Stoel</label>
-                      <select name="chair" id="chair-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'chair-other-{{ desk.desk_id }}')" class="edit-select">
-                        {% for chair in chairs %}
-                          <option value="{{ chair }}" {% if desk.chair|lower == chair|lower %}selected{% endif %}>{{ chair }}</option>
-                        {% endfor %}
-                        <option value="other">Nieuw...</option>
-                      </select>
-                      <input type="text" name="chair_other" id="chair-other-{{ desk.desk_id }}" placeholder="Nieuw stoel" class="edit-input-other">
-                    </div>
-                  </td>
-                  
-                  <!-- Dienst kolom -->
-                  <td class="desk-cell">
-                    <div class="edit-field-wrapper">
-                      <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Dienst</label>
-                      <select name="dienst_id" id="dienst-select-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'dienst-other-{{ desk.desk_id }}')" class="edit-select">
-                        <option value="None" {% if not desk.dienst or desk.dienst == 'Geen dienst' %}selected{% endif %}>Geen dienst</option>
-                        {% for dienst in diensten %}
-                          <option value="{{ dienst.naam }}" {% if desk.dienst == dienst.naam %}selected{% endif %}>{{ dienst.naam }}</option>
-                        {% endfor %}
-                        <option value="other">Nieuw...</option>
-                      </select>
-                      <input type="text" name="dienst_other" id="dienst-other-{{ desk.desk_id }}" placeholder="Nieuwe dienst" class="edit-input-other">
-                    </div>
-                  </td>
-                  
-                  <!-- Acties kolom -->
-                  <td class="desk-cell-actions">
-                    <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
-                      <button type="submit" class="btn edit-btn-save">Opslaan</button>
-                      <a href="{{ url_for('main.admin_dashboard', _anchor='desk-' + desk.desk_id|string) }}" class="btn edit-btn-cancel">Annuleren</a>
-                    </div>
-                  </td>
-                </form>
-              {% else %}
-                <!-- Read-only view -->
-                <td class="desk-cell-muted">{{ desk.screen }}</td>
-                <td class="desk-cell-muted">{{ desk.chair }}</td>
-                <td class="desk-cell">
-                  {% if desk.dienst %}
-                    <span class="dienst-badge">{{ desk.dienst }}</span>
-                  {% else %}
-                    <span class="dienst-badge-none">Geen dienst</span>
-                  {% endif %}
-                </td>
-                <td style="padding:16px;text-align:center">
-                  <a href="{{ url_for('main.admin_dashboard', edit=desk.desk_id, _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:8px 16px;margin-right:8px;text-decoration:none;display:inline-block">
-                    Wijzigen
-                  </a>
-                  {% if confirm_delete and confirm_delete == desk.desk_id %}
-                    <form method="POST" action="{{ url_for('main.admin_delete_desk', desk_id=desk.desk_id) }}" style="display:inline-block">
-                      <button type="submit" class="btn" style="padding:8px 16px;background:#f44336;margin-right:4px">
-                        Bevestig verwijderen
-                      </button>
-                      <a href="{{ url_for('main.admin_dashboard', _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:6px 12px;background:#94a3b8;text-decoration:none;font-size:0.85rem">
-                        Annuleer
-                      </a>
-                    </form>
-                  {% else %}
-                    <a href="{{ url_for('main.admin_dashboard', delete=desk.desk_id, _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:8px 16px;background:#f44336;text-decoration:none;display:inline-block">
-                      Verwijder
-                    </a>
-                  {% endif %}
-                </td>
-              {% endif %}
             </tr>
+            {% endif %}
             {% endfor %}
           </tbody>
         </table>

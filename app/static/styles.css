@@ -1,3 +1,30 @@
+/* Mobile responsive styles */
+@media (max-width: 600px) {
+  .container { padding: 0 8px; }
+  .header-inner { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .logo img { height: 36px; }
+  .nav { flex-direction: column; gap: 4px; width: 100%; }
+  .nav a, .dropdown-btn { width: 100%; text-align: left; padding: 12px 10px; font-size: 16px; }
+  .dropdown-content { min-width: 100%; left: 0; border-radius: 0 0 10px 10px; }
+  .main-content { padding: 16px 0; }
+  .card { padding: 14px; }
+  .home-welcome .title { font-size: 28px; }
+  .home-welcome { flex-direction: column; gap: 12px; }
+  table, thead th, tbody td { font-size: 13px; }
+  .btn { width: 100%; padding: 14px 0; font-size: 16px; }
+  /* Force horizontal layout for actions-cell buttons on mobile */
+  .actions-cell { flex-direction: row !important; gap: 8px !important; }
+  .actions-cell .btn, .actions-cell button {
+    width: auto !important;
+    display: inline-flex !important;
+    margin-bottom: 0 !important;
+    padding: 8px 16px !important;
+    writing-mode: horizontal-tb !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    text-align: center !important;
+  }
+}
 :root{
   --primary:#ff6200;
   --primary-dark:#e65800;

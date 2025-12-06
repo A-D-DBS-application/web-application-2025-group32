@@ -101,11 +101,11 @@ function closeNotifications() {
 </script>
 {% endif %}
 
-<div style="display:flex;gap:28px;margin-top:0">
-  <aside style="width:280px;flex-shrink:0">
-    <div class="card">
-      <h3 style="margin:0 0 18px 0;color:var(--primary);font-size:1.15rem">Snelle acties</h3>
-      <div style="display:flex;flex-direction:column;gap:12px">
+<div class="container main-content">
+  <div class="home-layout">
+    <aside class="home-sidebar card">
+      <h3 class="sidebar-title">Snelle acties</h3>
+      <div class="sidebar-actions">
         <a class="btn" href="{{ url_for('main.reserve') }}">Nieuwe reservatie</a>
         <a class="btn btn-secondary" href="{{ url_for('main.mijn_reservaties') }}">Mijn reservaties</a>
         {% if is_admin %}
@@ -114,91 +114,122 @@ function closeNotifications() {
         <a class="btn" href="{{ url_for('main.admin_reservations_overview') }}">Reservaties beheren</a>
         {% endif %}
       </div>
-    </div>
-  </aside>
-
-  <div style="flex:1">
-    <div class="card" style="margin-bottom:28px">
-      <h2 style="margin:0 0 6px 0;color:var(--primary)">Aankomende reservaties</h2>
-      <p class="small" style="margin-bottom:20px;color:var(--muted)">Je reservaties voor de komende week</p>
-      {% if upcoming and upcoming|length > 0 %}
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Datum</th>
-            <th>Tijd</th>
-            <th>Bureau</th>
-            <th>Gebouw</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in upcoming %}
-          {% if r.modified_by_admin %}
-          <tr>
-            <td colspan="4" style="padding:8px 12px;background:#fff3cd;border-left:4px solid #ff8c00;border-bottom:none;">
-              <span style="color:#ff8c00;font-weight:700;font-size:0.85rem">⚠ Deze reservatie is aangepast door de beheerder</span>
-            </td>
-          </tr>
-          <tr style="background:#fff3cd;">
-            <td style="border-left:4px solid #ff8c00;border-top:none;padding-top:4px;">{{ r.starttijd.strftime('%d/%m/%Y') if r.starttijd else '-' }}</td>
-            <td style="border-top:none;padding-top:4px;">{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }} - {{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
-            <td style="border-top:none;padding-top:4px;">Bureau {{ r.desk_number or 'N/A' }}</td>
-            <td style="border-top:none;padding-top:4px;">{{ r.building_adress or 'N/A' }}</td>
-          </tr>
-          {% else %}
-          <tr>
-            <td>{{ r.starttijd.strftime('%d/%m/%Y') if r.starttijd else '-' }}</td>
-            <td>{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }} - {{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
-            <td>Bureau {{ r.desk_number or 'N/A' }}</td>
-            <td>{{ r.building_adress or 'N/A' }}</td>
-          </tr>
-          {% endif %}
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <div style="padding:40px;text-align:center;color:var(--muted)">
-        <p>Geen aankomende reservaties.</p>
-        <a class="btn" href="{{ url_for('main.reserve') }}" style="margin-top:16px;display:inline-block">Maak een reservatie</a>
+    </aside>
+    <main class="home-main">
+      <div class="card" style="margin-bottom:28px">
+        <h2 style="margin:0 0 6px 0;color:var(--primary)">Aankomende reservaties</h2>
+        <p class="small" style="margin-bottom:20px;color:var(--muted)">Je reservaties voor de komende week</p>
+        {% if upcoming and upcoming|length > 0 %}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Tijd</th>
+              <th>Bureau</th>
+              <th>Gebouw</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in upcoming %}
+            {% if r.modified_by_admin %}
+            <tr>
+              <td colspan="4" style="padding:8px 12px;background:#fff3cd;border-left:4px solid #ff8c00;border-bottom:none;">
+                <span style="color:#ff8c00;font-weight:700;font-size:0.85rem">⚠ Deze reservatie is aangepast door de beheerder</span>
+              </td>
+            </tr>
+            <tr style="background:#fff3cd;">
+              <td style="border-left:4px solid #ff8c00;border-top:none;padding-top:4px;">{{ r.starttijd.strftime('%d/%m/%Y') if r.starttijd else '-' }}</td>
+              <td style="border-top:none;padding-top:4px;">{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }} - {{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
+              <td style="border-top:none;padding-top:4px;">Bureau {{ r.desk_number or 'N/A' }}</td>
+              <td style="border-top:none;padding-top:4px;">{{ r.building_adress or 'N/A' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td>{{ r.starttijd.strftime('%d/%m/%Y') if r.starttijd else '-' }}</td>
+              <td>{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }} - {{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
+              <td>Bureau {{ r.desk_number or 'N/A' }}</td>
+              <td>{{ r.building_adress or 'N/A' }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div style="padding:40px;text-align:center;color:var(--muted)">
+          <p>Geen aankomende reservaties.</p>
+          <a class="btn" href="{{ url_for('main.reserve') }}" style="margin-top:16px;display:inline-block">Maak een reservatie</a>
+        </div>
+        {% endif %}
+      </div>
+      {% if completed and completed|length > 0 %}
+      <div class="card">
+        <h2 style="margin:0 0 6px 0;color:var(--primary)">Voltooide reservaties</h2>
+        <p class="small" style="margin-bottom:20px;color:var(--muted)">Geef feedback over je ervaring</p>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Tijd</th>
+              <th>Bureau</th>
+              <th>Gebouw</th>
+              <th>Feedback</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in completed %}
+            <tr>
+              <td>{{ r.starttijd.strftime('%d/%m/%Y') if r.starttijd else '-' }}</td>
+              <td>
+                <span style="display:inline-flex;align-items:center;gap:4px;">
+                  <span>{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }}</span>
+                  <span style="font-weight:600;color:var(--muted)">–</span>
+                  <span>{{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</span>
+                </span>
+              </td>
+              <td>Bureau {{ r.desk_number or 'N/A' }}</td>
+              <td>{{ r.building_adress or 'N/A' }}</td>
+              <td>
+                {% if r.has_feedback %}
+                  <span style="color:var(--success);font-size:0.9rem;margin-right:8px">✓ Gegeven</span>
+                  <a class="btn-secondary" href="{{ url_for('main.feedback', res_id=r.res_id) }}" style="padding:6px 12px;font-size:0.85rem">Bewerk</a>
+                {% else %}
+                  <a class="btn" href="{{ url_for('main.feedback', res_id=r.res_id) }}" style="padding:6px 12px;font-size:0.85rem">Geef feedback</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
       {% endif %}
-    </div>
-
-    {% if completed and completed|length > 0 %}
-    <div class="card">
-      <h2 style="margin:0 0 6px 0;color:var(--primary)">Voltooide reservaties</h2>
-      <p class="small" style="margin-bottom:20px;color:var(--muted)">Geef feedback over je ervaring</p>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Datum</th>
-            <th>Tijd</th>
-            <th>Bureau</th>
-            <th>Gebouw</th>
-            <th>Feedback</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in completed %}
-          <tr>
-            <td>{{ r.starttijd.strftime('%d/%m/%Y') if r.starttijd else '-' }}</td>
-            <td>{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }} - {{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
-            <td>Bureau {{ r.desk_number or 'N/A' }}</td>
-            <td>{{ r.building_adress or 'N/A' }}</td>
-            <td>
-              {% if r.has_feedback %}
-                <span style="color:var(--success);font-size:0.9rem;margin-right:8px">✓ Gegeven</span>
-                <a class="btn-secondary" href="{{ url_for('main.feedback', res_id=r.res_id) }}" style="padding:6px 12px;font-size:0.85rem">Bewerk</a>
-              {% else %}
-                <a class="btn" href="{{ url_for('main.feedback', res_id=r.res_id) }}" style="padding:6px 12px;font-size:0.85rem">Geef feedback</a>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
+    </main>
   </div>
 </div>
+<style>
+  .home-layout { display: flex; gap: 28px; margin-top: 0; }
+  .home-sidebar { width: 280px; flex-shrink: 0; }
+  .sidebar-title { margin: 0 0 18px 0; color: var(--primary); font-size: 1.15rem; }
+  .sidebar-actions { display: flex; flex-direction: column; gap: 12px; }
+  @media (max-width: 700px) {
+    .sidebar-actions {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+    .sidebar-actions a.btn, .sidebar-actions a.btn-secondary {
+      width: auto;
+      min-width: 120px;
+      margin-bottom: 0;
+      font-size: 15px;
+      padding: 10px 8px;
+    }
+  }
+  .home-main { flex: 1; }
+  @media (max-width: 800px) {
+    .home-layout { flex-direction: column; gap: 18px; }
+    .home-sidebar { width: 100%; }
+    .home-main { width: 100%; }
+  }
+</style>
 {% endblock %}
