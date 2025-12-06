@@ -30,7 +30,7 @@
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
       <div style="padding:20px;border:2px solid #e5e7eb;border-radius:8px">
         <div style="font-size:2rem;font-weight:bold;margin-bottom:4px;color:var(--primary)">{{ desks|length }}</div>
-        <div style="color:#64748b">Totaal werkposten</div>
+        <div style="color:#64748b">Totaal bureaus</div>
       </div>
       <div style="padding:20px;border:2px solid #e5e7eb;border-radius:8px">
         <div style="font-size:2rem;font-weight:bold;margin-bottom:4px;color:var(--primary)">{{ diensten|length }}</div>
@@ -41,7 +41,7 @@
 
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h2 style="margin:0;font-size:1.5rem;color:var(--primary)">Alle Werkposten</h2>
+      <h2 style="margin:0;font-size:1.5rem;color:var(--primary)">Alle Bureaus</h2>
       <a href="{{ url_for('main.admin_dashboard', add_new=1) }}" class="btn" style="padding:10px 20px;text-decoration:none;display:inline-block;background:#4caf50">
         + Nieuw bureau toevoegen
       </a>
@@ -295,7 +295,7 @@
       </div>
     {% else %}
       <div style="text-align:center;padding:40px;color:#64748b">
-        <p style="font-size:1.1rem;margin:0">Geen werkposten gevonden in de database.</p>
+        <p style="font-size:1.1rem;margin:0">Geen bureaus gevonden in de database.</p>
       </div>
     {% endif %}
   </div>
