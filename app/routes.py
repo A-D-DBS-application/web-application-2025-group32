@@ -1012,7 +1012,8 @@ def admin_reservations_overview():
             User.user_last_name,
             User.user_email,
             Desk.desk_number,
-            Building.adress.label('building_adress')
+            Building.adress.label('building_adress'),
+            Building.floor.label('building_floor')
         ).join(User, Reservation.user_id == User.user_id
         ).join(Desk, Reservation.desk_id == Desk.desk_id
         ).join(Building, Desk.building_id == Building.building_id
@@ -1063,6 +1064,7 @@ def admin_reservations_overview():
                 'user_email': res.user_email,
                 'desk_number': res.desk_number,
                 'building_adress': res.building_adress,
+                'building_floor': res.building_floor,
                 'is_suspicious': is_suspicious,
                 'suspicious_reasons': suspicious_reasons
             })

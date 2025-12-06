@@ -23,18 +23,31 @@
     
     {% if reservations %}
         <div style="overflow-x: auto;">
-            <table>
+            <table style="table-layout: fixed; width: 100%; min-width: 1100px;">
+                <colgroup>
+                    <col style="width: 60px;">
+                    <col style="width: 150px;">
+                    <col style="width: 180px;">
+                    <col style="width: 70px;">
+                    <col style="width: 70px;">
+                    <col style="width: 80px;">
+                    <col style="width: 110px;">
+                    <col style="width: 80px;">
+                    <col style="width: 80px;">
+                    <col style="width: 180px;">
+                </colgroup>
                 <thead>
                     <tr>
-                        <th>Status</th>
-                        <th>Gebruiker</th>
-                        <th>Email</th>
-                        <th>Gebouw</th>
-                        <th>Bureau</th>
-                        <th>Datum</th>
-                        <th>Starttijd</th>
-                        <th>Eindtijd</th>
-                        <th>Acties</th>
+                        <th style="text-align: center; font-size: 13px;">Status</th>
+                        <th style="font-size: 13px;">Gebruiker</th>
+                        <th style="font-size: 13px;">Email</th>
+                        <th style="text-align: center; font-size: 13px;">Bureau</th>
+                        <th style="text-align: center; font-size: 13px;">Gebouw</th>
+                        <th style="text-align: center; font-size: 13px;">Verdieping</th>
+                        <th style="font-size: 13px; padding-left: 20px;">Datum</th>
+                        <th style="font-size: 13px;">Starttijd</th>
+                        <th style="font-size: 13px;">Eindtijd</th>
+                        <th style="text-align: center; font-size: 13px;">Acties</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -47,25 +60,25 @@
                             <span style="color: #28a745; font-size: 18px;">✓</span>
                             {% endif %}
                         </td>
-                        <td style="font-weight: 600; color: var(--text);">{{ res.user_name }} {{ res.user_last_name }}</td>
-                        <td>{{ res.user_email }}</td>
+                        <td style="font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ res.user_name }} {{ res.user_last_name }}</td>
+                        <td style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ res.user_email }}</td>
+                        <td style="text-align: center; font-weight: 600;">{{ res.desk_number }}</td>
                         <td style="text-align: center; font-weight: 600;">{{ res.building_adress }}</td>
-                        <td style="text-align: center;">{{ res.desk_number }}</td>
-                        <td>{{ res.starttijd.strftime('%d/%m/%Y') }}</td>
+                        <td style="text-align: center;">{{ res.building_floor if res.building_floor is not none else '-' }}</td>
+                        <td style="white-space: nowrap; padding-left: 20px;">{{ res.starttijd.strftime('%d/%m/%Y') }}</td>
                         <td>{{ res.starttijd.strftime('%H:%M') }}</td>
                         <td>{{ res.eindtijd.strftime('%H:%M') }}</td>
-                        <td>
-                            <div style="display: flex; gap: 8px; align-items: center;">
+                        <td style="padding: 16px; text-align: center;">
+                            <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: nowrap;">
                                 <a href="{{ url_for('main.admin_edit_reservation', res_id=res.res_id) }}" 
-                                   style="color: var(--primary); text-decoration: none; font-weight: 600; font-size: 14px;">
+                                   style="background: #ff6200; color: white; padding: 6px 14px; border-radius: 10px; text-decoration: none; display: inline-block; font-weight: 700; font-size: 15px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(255,98,0,0.2);">
                                     Wijzigen
                                 </a>
-                                
-                                <form method="POST" action="{{ url_for('main.admin_delete_reservation', res_id=res.res_id) }}" style="display:inline; margin: 0;">
+                                <form method="POST" action="{{ url_for('main.admin_delete_reservation', res_id=res.res_id) }}" style="display: inline-block; margin: 0;">
                                     <button type="submit" 
                                             onclick="return confirm('Weet je zeker dat je deze reservatie wilt verwijderen?')"
-                                            style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-weight: 600; font-size: 14px; padding: 0; font-family: inherit;">
-                                        Verwijderen
+                                            style="background: #f44336; color: white; padding: 6px 12px; border-radius: 10px; border: none; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 15px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(244,67,54,0.2);">
+                                        Verwijder
                                     </button>
                                 </form>
                             </div>
@@ -73,7 +86,7 @@
                     </tr>
                     {% if res.is_suspicious %}
                     <tr {% if res.is_suspicious %}style="background-color: #fff3cd;"{% endif %}>
-                        <td colspan="9" style="padding: 8px 16px; font-size: 13px; color: #856404;">
+                        <td colspan="10" style="padding: 8px 16px; font-size: 13px; color: #856404;">
                             <strong>Verdachte redenen:</strong>
                             {% for reason in res.suspicious_reasons %}
                                 <span style="margin-right: 12px;">• {{ reason }}</span>
