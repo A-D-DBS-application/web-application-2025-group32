@@ -82,22 +82,26 @@ def home():
     try:
         from app.models import Reservation, Feedback
         from datetime import datetime, timedelta
-        now = datetime.now()
-        week_later = now + timedelta(days=7)
+        from sqlalchemy import cast, Date
         
-        # Aankomende reservaties
+        now = datetime.now()
+        today = now.date()
+        week_later = today + timedelta(days=7)
+        
+        # Aankomende reservaties (vanaf nu tot 7 dagen vooruit)
+        # Check eindtijd > now om reservaties die al voorbij zijn uit te filteren
         upcoming = Reservation.query.filter(
             Reservation.user_id == user_id,
-            Reservation.starttijd >= now,
-            Reservation.starttijd <= week_later
+            Reservation.eindtijd > now,  # Alleen toekomstige reservaties
+            cast(Reservation.starttijd, Date) <= week_later
         ).order_by(Reservation.starttijd).all()
         
         # Voltooide reservaties (laatste 30 dagen)
-        month_ago = now - timedelta(days=30)
+        month_ago_date = (today - timedelta(days=30))
         completed = Reservation.query.filter(
             Reservation.user_id == user_id,
-            Reservation.eindtijd < now,
-            Reservation.eindtijd >= month_ago
+            Reservation.eindtijd <= now,  # Alleen afgelopen reservaties
+            cast(Reservation.eindtijd, Date) >= month_ago_date
         ).order_by(Reservation.eindtijd.desc()).all()
         
         # Voeg gebouw en bureau info toe aan elke reservatie
@@ -110,11 +114,17 @@ def home():
                 res.desk_number = 'N/A'
             # Check if feedback exists
             res.has_feedback = Feedback.query.filter_by(reservation_id=res.res_id).first() is not None
-    except Exception:
+            # Debug: print modified_by_admin status
+            print(f"Reservation {res.res_id}: modified_by_admin = {res.modified_by_admin}")
+        
+    except Exception as e:
+        print(f"ERROR in home(): {e}")
+        import traceback
+        traceback.print_exc()
         upcoming = []
         completed = []
 
-    return render_template("home.html", user=display, user_display=display, user_obj=user_obj, upcoming=upcoming, completed=completed, is_admin=is_admin)
+    return render_template("home.html", user=display, user_display=display, user_obj=user_obj, upcoming=upcoming, completed=completed, is_admin=is_admin, notifications=[])
 
 @app.route("/logout")
 def logout():

@@ -24,6 +24,26 @@
     </thead>
     <tbody>
       {% for r in reservations %}
+      {% if r.modified_by_admin %}
+      <tr>
+        <td colspan="7" style="padding:8px 12px;background:#fff3cd;border-left:4px solid #ff8c00;border-bottom:none;">
+          <span style="color:#ff8c00;font-weight:700;font-size:0.85rem">⚠ Deze reservatie is aangepast door de beheerder</span>
+        </td>
+      </tr>
+      <tr style="background:#fff3cd;">
+        <td style="border-left:4px solid #ff8c00;border-top:none;padding-top:4px;">{{ r.res_id }}</td>
+        <td style="border-top:none;padding-top:4px;">{{ r.building_adress or '-' }}</td>
+        <td style="border-top:none;padding-top:4px;">Bureau {{ r.desk_number or '-' }}</td>
+        <td style="border-top:none;padding-top:4px;">{{ r.starttijd.strftime('%d/%m/%Y') if r.starttijd else '-' }}</td>
+        <td style="border-top:none;padding-top:4px;">{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }}</td>
+        <td style="border-top:none;padding-top:4px;">{{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
+        <td style="border-top:none;padding-top:4px;">
+          <form method="post" action="{{ url_for('main.cancel_reservation', res_id=r.res_id) }}" onsubmit="return confirm('Weet je zeker dat je deze reservatie wilt annuleren?');" style="display:inline">
+            <button type="submit" style="padding:8px 16px;font-size:0.9rem;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">✕ Annuleer</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
       <tr>
         <td>{{ r.res_id }}</td>
         <td>{{ r.building_adress or '-' }}</td>
@@ -37,6 +57,7 @@
           </form>
         </td>
       </tr>
+      {% endif %}
       {% endfor %}
     </tbody>
   </table>

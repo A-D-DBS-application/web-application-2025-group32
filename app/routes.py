@@ -430,6 +430,7 @@ def mijn_reservaties():
             'building_adress': getattr(building, 'adress', None),
             'starttijd': r.starttijd,
             'eindtijd': r.eindtijd,
+            'modified_by_admin': r.modified_by_admin if hasattr(r, 'modified_by_admin') else False,
         })
 
     return render_template('mijn_reservaties.html', 
@@ -1102,6 +1103,7 @@ def admin_edit_reservation(res_id):
             date_str = request.form.get('date')
             start_str = request.form.get('start_time')
             end_str = request.form.get('end_time')
+            desk_id = int(request.form.get('desk_id'))
             
             chosen_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             start_time_obj = datetime.strptime(start_str, "%H:%M").time()
@@ -1116,7 +1118,7 @@ def admin_edit_reservation(res_id):
             
             # Check overlap met andere reservaties (behalve deze zelf)
             overlapping = Reservation.query.filter(
-                Reservation.desk_id == reservation.desk_id,
+                Reservation.desk_id == desk_id,
                 Reservation.res_id != res_id,
                 Reservation.starttijd < end_datetime,
                 start_datetime < Reservation.eindtijd
@@ -1127,8 +1129,11 @@ def admin_edit_reservation(res_id):
                 return redirect(url_for('main.admin_edit_reservation', res_id=res_id))
             
             # Update reservatie
+            reservation.desk_id = desk_id
             reservation.starttijd = start_datetime
             reservation.eindtijd = end_datetime
+            reservation.modified_by_admin = True  # Markeer als gewijzigd door admin
+            
             db.session.commit()
             
             flash("Reservatie succesvol gewijzigd.")
@@ -1140,10 +1145,13 @@ def admin_edit_reservation(res_id):
             return redirect(url_for('main.admin_edit_reservation', res_id=res_id))
     
     # GET: toon formulier
+    buildings = Building.query.all()
+    
     return render_template('admin_edit_reservation.html', 
                          user=user,
                          is_admin=True,
-                         reservation=reservation)
+                         reservation=reservation,
+                         buildings=buildings)
 
 
 @main.route('/admin/reservation/create', methods=['GET', 'POST'])

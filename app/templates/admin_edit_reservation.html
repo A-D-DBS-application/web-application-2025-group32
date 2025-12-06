@@ -1,34 +1,238 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Reservatie Wijzigen - Admin</title>
-</head>
-<body>
-    <h1>Reservatie Wijzigen</h1>
-    
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for msg in messages %}
-                <p style="color: red;">{{ msg }}</p>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-    
-    <p><strong>Gebruiker:</strong> {{ reservation.user.user_name }} {{ reservation.user.user_last_name }}</p>
-    <p><strong>Bureau:</strong> {{ reservation.desk.desk_number }} (Gebouw {{ reservation.desk.building.adress }})</p>
-    
-    <form method="POST">
-        <label>Datum:</label>
-        <input type="date" name="date" value="{{ reservation.starttijd.strftime('%Y-%m-%d') }}" required><br>
+{% extends "base.html" %}
+
+{% block title %}Reservatie Wijzigen - Admin{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px; margin: 40px auto; padding: 0 20px;">
+    <div style="background: white; border-radius: 12px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+        <h1 style="color: var(--text); margin-bottom: 24px; font-size: 28px;">Reservatie Wijzigen</h1>
         
-        <label>Starttijd:</label>
-        <input type="time" name="start_time" value="{{ reservation.starttijd.strftime('%H:%M') }}" required><br>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for msg in messages %}
+                    <div style="background: #fee; border-left: 4px solid #f44336; padding: 12px 16px; margin-bottom: 20px; border-radius: 4px; color: #c62828;">
+                        {{ msg }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
         
-        <label>Eindtijd:</label>
-        <input type="time" name="end_time" value="{{ reservation.eindtijd.strftime('%H:%M') }}" required><br>
+        <!-- Huidige Reservatie Info -->
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin-bottom: 32px;">
+            <h3 style="color: var(--text); margin-bottom: 16px; font-size: 18px;">Huidige Reservatie</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <p style="color: #666; margin-bottom: 4px; font-size: 13px;">Gebruiker</p>
+                    <p style="color: var(--text); font-weight: 600;">{{ reservation.user.user_name }} {{ reservation.user.user_last_name }}</p>
+                </div>
+                <div>
+                    <p style="color: #666; margin-bottom: 4px; font-size: 13px;">Email</p>
+                    <p style="color: var(--text);">{{ reservation.user.user_email }}</p>
+                </div>
+                <div>
+                    <p style="color: #666; margin-bottom: 4px; font-size: 13px;">Bureau</p>
+                    <p style="color: var(--text); font-weight: 600;">Bureau {{ reservation.desk.desk_number }}</p>
+                </div>
+                <div>
+                    <p style="color: #666; margin-bottom: 4px; font-size: 13px;">Gebouw</p>
+                    <p style="color: var(--text);">{{ reservation.desk.building.adress }}</p>
+                </div>
+                <div>
+                    <p style="color: #666; margin-bottom: 4px; font-size: 13px;">Datum</p>
+                    <p style="color: var(--text);">{{ reservation.starttijd.strftime('%d/%m/%Y') }}</p>
+                </div>
+                <div>
+                    <p style="color: #666; margin-bottom: 4px; font-size: 13px;">Tijd</p>
+                    <p style="color: var(--text);">{{ reservation.starttijd.strftime('%H:%M') }} - {{ reservation.eindtijd.strftime('%H:%M') }}</p>
+                </div>
+            </div>
+        </div>
         
-        <button type="submit">Opslaan</button>
-        <a href="{{ url_for('main.admin_reservations_overview') }}">Annuleren</a>
-    </form>
-</body>
-</html>
+        <!-- Wijzig Formulier -->
+        <form method="POST" id="editForm">
+            <h3 style="color: var(--text); margin-bottom: 20px; font-size: 18px;">Nieuwe Gegevens</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Gebouw *</label>
+                    <select id="address_select" 
+                            data-current-address="{{ reservation.desk.building.adress }}"
+                            data-current-floor="{{ reservation.desk.building.floor }}"
+                            data-current-building-id="{{ reservation.desk.building_id }}"
+                            required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; color: var(--text); background: white;">
+                        <option value="">-- Selecteer gebouw --</option>
+                        {% set unique_addresses = [] %}
+                        {% for b in buildings %}
+                            {% if b.adress not in unique_addresses %}
+                                {% set _ = unique_addresses.append(b.adress) %}
+                                <option value="{{ b.adress }}" {% if b.adress == reservation.desk.building.adress %}selected{% endif %}>{{ b.adress }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Verdieping *</label>
+                    <select id="floor_select" required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; color: var(--text); background: white;">
+                        <option value="">-- Selecteer verdieping --</option>
+                        {% for b in buildings %}
+                            {% if b.adress == reservation.desk.building.adress %}
+                                <option value="{{ b.building_id }}" {% if b.building_id == reservation.desk.building_id %}selected{% endif %}>Verdieping {{ b.floor }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <input type="hidden" name="building_id" id="building_id_hidden" value="{{ reservation.desk.building_id }}">
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Bureau *</label>
+                <select name="desk_id" id="desk_select" 
+                        data-current-desk="{{ reservation.desk_id }}"
+                        required style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; color: var(--text); background: white;">
+                    <option value="{{ reservation.desk_id }}">Bureau {{ reservation.desk.desk_number }}</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Datum *</label>
+                <input type="date" name="date" value="{{ reservation.starttijd.strftime('%Y-%m-%d') }}" required 
+                       style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; color: var(--text);">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px;">
+                <div>
+                    <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Starttijd *</label>
+                    <input type="time" name="start_time" value="{{ reservation.starttijd.strftime('%H:%M') }}" required 
+                           style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; color: var(--text);">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Eindtijd *</label>
+                    <input type="time" name="end_time" value="{{ reservation.eindtijd.strftime('%H:%M') }}" required 
+                           style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; color: var(--text);">
+                </div>
+            </div>
+            
+            <!-- Buttons -->
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <a href="{{ url_for('main.admin_reservations_overview') }}" 
+                   style="padding: 12px 24px; background: #e0e0e0; color: var(--text); text-decoration: none; border-radius: 8px; font-weight: 600; transition: all 0.2s;">
+                    Annuleren
+                </a>
+                <button type="button" onclick="confirmSave()" 
+                        style="padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(255,98,0,0.3);">
+                    Wijzigingen Opslaan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Hidden building data voor JavaScript -->
+<div id="building-data" style="display: none;">
+    {% for b in buildings %}
+        <div data-building-id="{{ b.building_id }}" data-address="{{ b.adress }}" data-floor="{{ b.floor }}"></div>
+    {% endfor %}
+</div>
+
+<script>
+// Lees building data uit hidden divs
+var buildingDataDiv = document.getElementById('building-data');
+var buildingElements = buildingDataDiv.querySelectorAll('[data-building-id]');
+var buildings = [];
+buildingElements.forEach(function(el) {
+    buildings.push({
+        building_id: parseInt(el.getAttribute('data-building-id')),
+        adress: el.getAttribute('data-address'),
+        floor: parseInt(el.getAttribute('data-floor'))
+    });
+});
+
+var addressSelect = document.getElementById('address_select');
+var currentBuildingId = parseInt(addressSelect.getAttribute('data-current-building-id'));
+var currentAddress = addressSelect.getAttribute('data-current-address');
+
+// Wanneer gebouw wordt geselecteerd, toon verdiepingen
+addressSelect.addEventListener('change', function() {
+    var selectedAddress = this.value;
+    var floorSelect = document.getElementById('floor_select');
+    var deskSelect = document.getElementById('desk_select');
+    
+    floorSelect.innerHTML = '<option value="">-- Selecteer verdieping --</option>';
+    deskSelect.innerHTML = '<option value="">-- Eerst verdieping selecteren --</option>';
+    document.getElementById('building_id_hidden').value = '';
+    
+    if (!selectedAddress) {
+        floorSelect.innerHTML = '<option value="">-- Eerst gebouw selecteren --</option>';
+        return;
+    }
+    
+    // Filter gebouwen op adres en toon verdiepingen
+    var floors = buildings
+        .filter(function(b) { return b.adress === selectedAddress; })
+        .map(function(b) { return { floor: b.floor, building_id: b.building_id }; });
+    
+    floors.forEach(function(f) {
+        var option = document.createElement('option');
+        option.value = f.building_id;
+        option.textContent = 'Verdieping ' + f.floor;
+        if (f.building_id === currentBuildingId) {
+            option.selected = true;
+        }
+        floorSelect.appendChild(option);
+    });
+    
+    // Trigger verdieping change als huidige is geselecteerd
+    if (selectedAddress === currentAddress) {
+        floorSelect.dispatchEvent(new Event('change'));
+    }
+});
+
+// Wanneer verdieping wordt geselecteerd, laad bureaus
+document.getElementById('floor_select').addEventListener('change', function() {
+    var buildingId = this.value;
+    var deskSelect = document.getElementById('desk_select');
+    
+    document.getElementById('building_id_hidden').value = buildingId;
+    
+    if (!buildingId) {
+        deskSelect.innerHTML = '<option value="">-- Eerst verdieping selecteren --</option>';
+        return;
+    }
+    
+    var currentDeskId = parseInt(deskSelect.getAttribute('data-current-desk'));
+    
+    fetch('/api/desks?building_id=' + buildingId)
+        .then(function(res) { return res.json(); })
+        .then(function(desks) {
+            deskSelect.innerHTML = '<option value="">-- Selecteer bureau --</option>';
+            desks.forEach(function(desk) {
+                var option = document.createElement('option');
+                option.value = desk.desk_id;
+                option.textContent = 'Bureau ' + desk.desk_number;
+                if (desk.desk_id === currentDeskId) {
+                    option.selected = true;
+                }
+                deskSelect.appendChild(option);
+            });
+        })
+        .catch(function(err) {
+            console.error('Error loading desks:', err);
+            deskSelect.innerHTML = '<option value="">Fout bij laden bureaus</option>';
+        });
+});
+
+// Trigger initial load
+if (currentAddress) {
+    addressSelect.dispatchEvent(new Event('change'));
+}
+
+// Confirmatie bij opslaan
+function confirmSave() {
+    if (confirm('Ben je zeker dat je deze wijzigingen wilt doorvoeren?\n\nDe gebruiker krijgt een notificatie over de wijziging.')) {
+        document.getElementById('editForm').submit();
+    }
+}
+</script>
+{% endblock %}
