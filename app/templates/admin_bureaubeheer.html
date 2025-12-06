@@ -199,24 +199,49 @@
             {% for desk in desks %}
             {% if edit_mode and edit_desk_id == desk.desk_id %}
             <tr id="desk-{{ desk.desk_id }}" class="desk-row-edit">
-              <td class="desk-cell-primary">{{ desk.desk_number }}</td>
-              <td class="desk-cell">{{ desk.building_adress }}</td>
-              <td class="desk-cell">{{ desk.building_floor if desk.building_floor is not none else '-' }}</td>
-              <td class="desk-cell-muted">{{ desk.screen }}</td>
-              <td class="desk-cell-muted">{{ desk.chair }}</td>
-              <td class="desk-cell">
-                {% if desk.dienst %}
-                  <span class="dienst-badge">{{ desk.dienst }}</span>
-                {% else %}
-                  <span class="dienst-badge-none">Geen dienst</span>
-                {% endif %}
-              </td>
-              <td style="padding:16px;text-align:center">
-                <form method="POST" action="{{ url_for('main.admin_update_desk', desk_id=desk.desk_id) }}" id="edit-form-{{ desk.desk_id }}" style="display:inline-block">
+              <form method="POST" action="{{ url_for('main.admin_update_desk', desk_id=desk.desk_id) }}" id="edit-form-{{ desk.desk_id }}">
+                <td class="desk-cell-primary">
+                  <input type="number" name="desk_number" value="{{ desk.desk_number }}" min="1" required class="edit-input-number" />
+                </td>
+                <td class="desk-cell">
+                  <select name="building_id" class="edit-select" required>
+                    {% for building in buildings %}
+                      <option value="{{ building.id }}" {% if desk.building_id == building.id %}selected{% endif %}>{{ building.naam }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td class="desk-cell">
+                  <input type="number" name="building_floor" value="{{ desk.building_floor if desk.building_floor is not none else '' }}" min="0" max="20" required class="edit-input-floor" />
+                </td>
+                <td class="desk-cell-muted">
+                  <select name="screen" class="edit-select">
+                    <option value="">-- Geen --</option>
+                    {% for screen in screens %}
+                      <option value="{{ screen }}" {% if desk.screen == screen %}selected{% endif %}>{{ screen }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td class="desk-cell-muted">
+                  <select name="chair" class="edit-select">
+                    <option value="">-- Geen --</option>
+                    {% for chair in chairs %}
+                      <option value="{{ chair }}" {% if desk.chair == chair %}selected{% endif %}>{{ chair }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td class="desk-cell">
+                  <select name="dienst" class="edit-select">
+                    <option value="">Geen dienst</option>
+                    {% for dienst in diensten %}
+                      <option value="{{ dienst.naam }}" {% if desk.dienst == dienst.naam %}selected{% endif %}>{{ dienst.naam }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td style="padding:16px;text-align:center">
                   <button type="submit" class="btn edit-btn-save">Opslaan</button>
                   <a href="{{ url_for('main.admin_dashboard', _anchor='desk-' + desk.desk_id|string) }}" class="btn edit-btn-cancel">Annuleren</a>
-                </form>
-              </td>
+                </td>
+              </form>
             </tr>
             {% else %}
             <tr id="desk-{{ desk.desk_id }}" class="desk-row">
