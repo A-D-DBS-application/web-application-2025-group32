@@ -11,26 +11,38 @@
 <div style="max-width:600px;margin:0 auto">
   <div class="card">
     <h2 style="margin:0 0 24px 0;color:var(--primary)">Reservatie Details</h2>
-    <div style="display:grid;gap:18px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 24px">
       <div>
-        <label class="small" style="color:var(--muted)">Bureau</label>
-        <p style="font-size:1.1rem;margin:4px 0">Bureau {{ desk.desk_number }}</p>
+        <label class="small" style="color:var(--muted);margin-bottom:0">Bureau</label>
+        <p style="font-size:1.1rem;margin:0">Bureau {{ desk.desk_number }}</p>
       </div>
       <div>
-        <label class="small" style="color:var(--muted)">Gebouw</label>
-        <p style="font-size:1.1rem;margin:4px 0">{{ desk.building.adress }}</p>
+        <label class="small" style="color:var(--muted);margin-bottom:0">Dienst</label>
+        <p style="font-size:1.1rem;margin:0">{{ desk.get_dienst() }}</p>
       </div>
       <div>
-        <label class="small" style="color:var(--muted)">Dienst</label>
-        <p style="font-size:1.1rem;margin:4px 0">{{ desk.get_dienst() }}</p>
+        <label class="small" style="color:var(--muted);margin-bottom:0">Gebouw</label>
+        <p style="font-size:1.1rem;margin:0">{{ desk.building.adress }}</p>
       </div>
       <div>
-        <label class="small" style="color:var(--muted)">Datum</label>
-        <p style="font-size:1.1rem;margin:4px 0">{{ date }}</p>
+        <label class="small" style="color:var(--muted);margin-bottom:0">Scherm</label>
+        <p style="font-size:1.1rem;margin:0">{{ desk.screen if desk.screen else 'Niet gespecificeerd' }}</p>
       </div>
       <div>
-        <label class="small" style="color:var(--muted)">Tijd</label>
-        <p style="font-size:1.1rem;margin:4px 0">{{ start_time }} - {{ end_time }}</p>
+        <label class="small" style="color:var(--muted);margin-bottom:0">Verdieping</label>
+        <p style="font-size:1.1rem;margin:0">{% if desk.building and desk.building.floor is not none %}{{ desk.building.floor }}{% else %}-{% endif %}</p>
+      </div>
+      <div>
+        <label class="small" style="color:var(--muted);margin-bottom:0">Stoel</label>
+        <p style="font-size:1.1rem;margin:0">{{ desk.chair if desk.chair else 'Niet gespecificeerd' }}</p>
+      </div>
+      <div>
+        <label class="small" style="color:var(--muted);margin-bottom:0">Datum</label>
+        <p style="font-size:1.1rem;margin:0">{{ date }}</p>
+      </div>
+      <div>
+        <label class="small" style="color:var(--muted);margin-bottom:0">Tijd</label>
+        <p style="font-size:1.1rem;margin:0">{{ start_time }} - {{ end_time }}</p>
       </div>
     </div>
 
