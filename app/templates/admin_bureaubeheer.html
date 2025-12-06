@@ -84,6 +84,13 @@
                    style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
           </div>
           
+          <!-- Verdieping -->
+          <div>
+            <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Verdieping *</label>
+            <input type="number" name="floor" required min="0" max="20" step="1" value="1" placeholder="bijv. 1"
+                   style="padding:8px;border:1px solid #4caf50;border-radius:6px;width:100%;font-size:0.9rem">
+          </div>
+          
           <!-- Scherm -->
           <div>
             <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Scherm</label>
@@ -144,11 +151,21 @@
     
     {% if desks %}
       <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse">
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+          <colgroup>
+            <col style="width:10%">
+            <col style="width:8%">
+            <col style="width:10%">
+            <col style="width:15%">
+            <col style="width:15%">
+            <col style="width:17%">
+            <col style="width:25%">
+          </colgroup>
           <thead>
             <tr style="background:var(--primary);color:white">
-              <th style="padding:12px 16px;text-align:left;font-weight:600;border-radius:8px 0 0 0">Bureau</th>
+              <th style="padding:12px 16px;text-align:left;font-weight:600;border-radius:8px 0 0 0">Bureau nummer</th>
               <th style="padding:12px 16px;text-align:left;font-weight:600">Gebouw</th>
+              <th style="padding:12px 16px;text-align:left;font-weight:600">Verdieping</th>
               <th style="padding:12px 16px;text-align:left;font-weight:600">Scherm</th>
               <th style="padding:12px 16px;text-align:left;font-weight:600">Stoel</th>
               <th style="padding:12px 16px;text-align:left;font-weight:600">Dienst</th>
@@ -158,114 +175,114 @@
           <tbody>
             {% for desk in desks %}
             {% if edit_mode and edit_desk_id == desk.desk_id %}
-            <tr id="desk-{{ desk.desk_id }}" style="border-bottom:1px solid #e5e7eb;background:#fffbeb">
+            <tr id="desk-{{ desk.desk_id }}" class="desk-row-edit">
             {% else %}
-            <tr id="desk-{{ desk.desk_id }}" style="border-bottom:1px solid #e5e7eb">
+            <tr id="desk-{{ desk.desk_id }}" class="desk-row">
             {% endif %}
-              <td style="padding:16px;font-weight:600;color:var(--primary)">{{ desk.desk_number }}</td>
-              <td style="padding:16px">{{ desk.building_adress }}</td>
+              <td class="desk-cell-primary">
+                {% if edit_mode and edit_desk_id == desk.desk_id %}
+                  <div class="edit-field-wrapper">
+                    <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Bureau nummer</label>
+                    <input type="number" name="desk_number" value="{{ desk.desk_number }}" required min="1" step="1" form="edit-form-{{ desk.desk_id }}" class="edit-input-number">
+                  </div>
+                {% else %}
+                  {{ desk.desk_number }}
+                {% endif %}
+              </td>
+              <td class="desk-cell">
+                {% if edit_mode and edit_desk_id == desk.desk_id %}
+                  <div class="edit-field-wrapper">
+                    <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Gebouw</label>
+                    <select name="building_id" id="building-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'building-other-{{ desk.desk_id }}')" form="edit-form-{{ desk.desk_id }}" class="edit-select">
+                      {% for building in buildings %}
+                        <option value="{{ building.id }}" {% if desk.building_id == building.id %}selected{% endif %}>{{ building.naam }}</option>
+                      {% endfor %}
+                      <option value="other">Nieuw...</option>
+                    </select>
+                    <input type="text" name="building_other" id="building-other-{{ desk.desk_id }}" placeholder="Nieuw gebouw" form="edit-form-{{ desk.desk_id }}" class="edit-input-other">
+                  </div>
+                {% else %}
+                  {{ desk.building_adress }}
+                {% endif %}
+              </td>
+              <td class="{% if edit_mode and edit_desk_id == desk.desk_id %}desk-cell-edit{% else %}desk-cell{% endif %}">
+                {% if edit_mode and edit_desk_id == desk.desk_id %}
+                  <div class="edit-field-wrapper">
+                    <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Verdieping</label>
+                    <input type="number" name="floor" value="{{ desk.building_floor if desk.building_floor is not none else 1 }}" required min="0" max="20" step="1" form="edit-form-{{ desk.desk_id }}" class="edit-input-floor">
+                  </div>
+                {% else %}
+                  {% if desk.building_floor is not none %}
+                    {{ desk.building_floor }}
+                  {% else %}
+                    -
+                  {% endif %}
+                {% endif %}
+              </td>
               
               {% if edit_mode and edit_desk_id == desk.desk_id %}
-                <!-- Edit mode form -->
-                <td style="padding:16px" colspan="4">
-                  <form method="POST" action="{{ url_for('main.admin_update_desk', desk_id=desk.desk_id) }}" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
-                    
-                    <!-- Bureau nummer -->
-                    <div>
-                      <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Bureau nummer</label>
-                      <input type="number" name="desk_number" value="{{ desk.desk_number }}" required min="1" step="1"
-                             style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem">
-                    </div>
-                    
-                    <!-- Gebouw -->
-                    <div>
-                      <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Gebouw</label>
-                      <select name="building_id" id="building-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'building-other-{{ desk.desk_id }}')"
-                              style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
-                        {% for building in buildings %}
-                          <option value="{{ building.id }}" {% if desk.building_id == building.id %}selected{% endif %}>
-                            {{ building.naam }}
-                          </option>
-                        {% endfor %}
-                        <option value="other">Nieuw...</option>
-                      </select>
-                      <input type="text" name="building_other" id="building-other-{{ desk.desk_id }}" placeholder="Nieuw gebouw naam"
-                             style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
-                    </div>
-                    
-                    <!-- Scherm -->
-                    <div>
-                      <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Scherm</label>
-                      <select name="screen" id="screen-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'screen-other-{{ desk.desk_id }}')"
-                              style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+                <!-- Edit mode - each field in its own column -->
+                <form method="POST" action="{{ url_for('main.admin_update_desk', desk_id=desk.desk_id) }}" id="edit-form-{{ desk.desk_id }}">
+                  <!-- Scherm kolom -->
+                  <td class="desk-cell">
+                    <div class="edit-field-wrapper">
+                      <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Scherm</label>
+                      <select name="screen" id="screen-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'screen-other-{{ desk.desk_id }}')" class="edit-select">
                         {% for screen in screens %}
-                          <option value="{{ screen }}" {% if desk.screen|lower == screen|lower %}selected{% endif %}>
-                            {{ screen }}
-                          </option>
+                          <option value="{{ screen }}" {% if desk.screen|lower == screen|lower %}selected{% endif %}>{{ screen }}</option>
                         {% endfor %}
                         <option value="other">Nieuw...</option>
                       </select>
-                      <input type="text" name="screen_other" id="screen-other-{{ desk.desk_id }}" placeholder="Nieuw scherm type"
-                             style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
+                      <input type="text" name="screen_other" id="screen-other-{{ desk.desk_id }}" placeholder="Nieuw scherm" class="edit-input-other">
                     </div>
-                    
-                    <!-- Stoel -->
-                    <div>
-                      <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Stoel</label>
-                      <select name="chair" id="chair-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'chair-other-{{ desk.desk_id }}')"
-                              style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+                  </td>
+                  
+                  <!-- Stoel kolom -->
+                  <td class="desk-cell">
+                    <div class="edit-field-wrapper">
+                      <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Stoel</label>
+                      <select name="chair" id="chair-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'chair-other-{{ desk.desk_id }}')" class="edit-select">
                         {% for chair in chairs %}
-                          <option value="{{ chair }}" {% if desk.chair|lower == chair|lower %}selected{% endif %}>
-                            {{ chair }}
-                          </option>
+                          <option value="{{ chair }}" {% if desk.chair|lower == chair|lower %}selected{% endif %}>{{ chair }}</option>
                         {% endfor %}
                         <option value="other">Nieuw...</option>
                       </select>
-                      <input type="text" name="chair_other" id="chair-other-{{ desk.desk_id }}" placeholder="Nieuw stoel type"
-                             style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
+                      <input type="text" name="chair_other" id="chair-other-{{ desk.desk_id }}" placeholder="Nieuw stoel" class="edit-input-other">
                     </div>
-                    
-                    <!-- Dienst -->
-                    <div>
-                      <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Dienst</label>
-                      <select name="dienst_id" id="dienst-select-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'dienst-other-{{ desk.desk_id }}')"
-                              style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+                  </td>
+                  
+                  <!-- Dienst kolom -->
+                  <td class="desk-cell">
+                    <div class="edit-field-wrapper">
+                      <label style="display:block;font-size:0.75rem;color:#64748b;margin-bottom:4px;font-weight:600">Dienst</label>
+                      <select name="dienst_id" id="dienst-select-{{ desk.desk_id }}" onchange="toggleOtherInput(this, 'dienst-other-{{ desk.desk_id }}')" class="edit-select">
                         <option value="None" {% if not desk.dienst or desk.dienst == 'Geen dienst' %}selected{% endif %}>Geen dienst</option>
                         {% for dienst in diensten %}
-                          <option value="{{ dienst.naam }}" {% if desk.dienst == dienst.naam %}selected{% endif %}>
-                            {{ dienst.naam }}
-                          </option>
+                          <option value="{{ dienst.naam }}" {% if desk.dienst == dienst.naam %}selected{% endif %}>{{ dienst.naam }}</option>
                         {% endfor %}
                         <option value="other">Nieuw...</option>
                       </select>
-                      <input type="text" name="dienst_other" id="dienst-other-{{ desk.desk_id }}" placeholder="Nieuwe dienst naam"
-                             style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
+                      <input type="text" name="dienst_other" id="dienst-other-{{ desk.desk_id }}" placeholder="Nieuwe dienst" class="edit-input-other">
                     </div>
-                    
-                    <!-- Buttons -->
-                    <div style="grid-column:1/-1;display:flex;gap:8px;margin-top:8px">
-                      <button type="submit" class="btn" style="padding:10px 20px;background:#4caf50;white-space:nowrap">
-                        Opslaan
-                      </button>
-                      <a href="{{ url_for('main.admin_dashboard', _anchor='desk-' + desk.desk_id|string) }}" class="btn" style="padding:10px 20px;background:#94a3b8;text-decoration:none;white-space:nowrap">
-                        Annuleren
-                      </a>
+                  </td>
+                  
+                  <!-- Acties kolom -->
+                  <td class="desk-cell-actions">
+                    <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+                      <button type="submit" class="btn edit-btn-save">Opslaan</button>
+                      <a href="{{ url_for('main.admin_dashboard', _anchor='desk-' + desk.desk_id|string) }}" class="btn edit-btn-cancel">Annuleren</a>
                     </div>
-                  </form>
-                </td>
+                  </td>
+                </form>
               {% else %}
                 <!-- Read-only view -->
-                <td style="padding:16px;color:#64748b">{{ desk.screen }}</td>
-                <td style="padding:16px;color:#64748b">{{ desk.chair }}</td>
-                <td style="padding:16px">
+                <td class="desk-cell-muted">{{ desk.screen }}</td>
+                <td class="desk-cell-muted">{{ desk.chair }}</td>
+                <td class="desk-cell">
                   {% if desk.dienst %}
-                    <span style="background:#e8f5e9;color:#2e7d32;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:500">
-                      {{ desk.dienst }}
-                    </span>
+                    <span class="dienst-badge">{{ desk.dienst }}</span>
                   {% else %}
-                    <span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:12px;font-size:0.85rem;font-weight:500">
-                      Geen dienst
-                    </span>
+                    <span class="dienst-badge-none">Geen dienst</span>
                   {% endif %}
                 </td>
                 <td style="padding:16px;text-align:center">

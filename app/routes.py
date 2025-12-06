@@ -60,7 +60,14 @@ def reserve():
         buildings = [Building.query.filter_by(adress=addr[0]).first() for addr in unique_addresses]
     except Exception:
         buildings = []
-    floors = [0, 1, 2]
+    
+    # Get all unique floors from buildings, sorted
+    floors = []
+    try:
+        unique_floors = db.session.query(distinct(Building.floor)).filter(Building.floor.isnot(None)).order_by(Building.floor).all()
+        floors = [f[0] for f in unique_floors]
+    except Exception:
+        floors = [0, 1, 2]  # fallback
 
     # Behoud ingevoerde waarden voor aanpassingen
     saved = {
@@ -681,6 +688,7 @@ def admin_dashboard():
                 'desk_number': desk.desk_number,
                 'building_adress': desk.building.adress if desk.building else 'N/A',
                 'building_id': desk.building_id,
+                'building_floor': desk.building.floor if desk.building else None,
                 'dienst': desk.dienst,
                 'dienst_naam': desk.get_dienst(),
                 'screen': desk.screen or 'Niet gespecificeerd',
@@ -758,14 +766,37 @@ def admin_update_desk(desk_id):
         
         # Update gebouw - check eerst of "Andere" is geselecteerd
         if new_building_id == 'other' and new_building_other:
-            # Maak nieuw gebouw aan
-            new_building = Building(adress=new_building_other, floor=1)
+            # Haal floor waarde op uit form
+            floor_value = int(request.form.get('floor', 1))
+            # Maak nieuw gebouw aan met opgegeven floor
+            new_building = Building(adress=new_building_other, floor=floor_value)
             db.session.add(new_building)
             db.session.flush()  # Om building_id te krijgen
             desk.building_id = new_building.building_id
-            flash(f"Nieuw gebouw '{new_building_other}' aangemaakt.", "success")
+            flash(f"Nieuw gebouw '{new_building_other}' (verdieping {floor_value}) aangemaakt.", "success")
         elif new_building_id and new_building_id != 'other':
-            desk.building_id = int(new_building_id)
+            # Check of verdieping is gewijzigd
+            floor_value = request.form.get('floor')
+            selected_building = Building.query.get(int(new_building_id))
+            
+            if floor_value and selected_building and int(floor_value) != selected_building.floor:
+                # Verdieping is gewijzigd! Zoek of maak een building met deze gebouw+verdieping combinatie
+                target_building = Building.query.filter_by(
+                    adress=selected_building.adress,
+                    floor=int(floor_value)
+                ).first()
+                
+                if not target_building:
+                    # Maak nieuw building record aan voor deze gebouw+verdieping combinatie
+                    target_building = Building(adress=selected_building.adress, floor=int(floor_value))
+                    db.session.add(target_building)
+                    db.session.flush()
+                    flash(f"Nieuwe locatie '{selected_building.adress}' verdieping {floor_value} aangemaakt.", "success")
+                
+                desk.building_id = target_building.building_id
+            else:
+                # Geen verdieping wijziging, gewoon building_id updaten
+                desk.building_id = int(new_building_id)
         
         # Update dienst - sla direct de dienst naam op
         if new_dienst_id == 'other' and new_dienst_other:
@@ -834,11 +865,14 @@ def admin_create_desk():
         
         # Handle gebouw
         if new_building_id == 'other' and new_building_other:
-            new_building = Building(adress=new_building_other, floor=1)
+            # Haal floor waarde op uit form
+            floor_value = int(request.form.get('floor', 1))
+            # Maak nieuw gebouw aan met opgegeven floor
+            new_building = Building(adress=new_building_other, floor=floor_value)
             db.session.add(new_building)
             db.session.flush()
             building_id = new_building.building_id
-            flash(f"Nieuw gebouw '{new_building_other}' aangemaakt.", "success")
+            flash(f"Nieuw gebouw '{new_building_other}' (verdieping {floor_value}) aangemaakt.", "success")
         elif new_building_id and new_building_id != 'other':
             building_id = int(new_building_id)
         else:
