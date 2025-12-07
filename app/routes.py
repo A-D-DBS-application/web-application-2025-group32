@@ -428,6 +428,7 @@ def mijn_reservaties():
             'res_id': r.res_id,
             'desk_number': getattr(desk, 'desk_number', None),
             'building_adress': getattr(building, 'adress', None),
+            'floor': getattr(building, 'floor', None),
             'starttijd': r.starttijd,
             'eindtijd': r.eindtijd,
             'modified_by_admin': r.modified_by_admin if hasattr(r, 'modified_by_admin') else False,

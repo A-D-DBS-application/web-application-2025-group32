@@ -15,9 +15,14 @@ def create_app():
 
     # Initialize extensions and blueprints after creating app
     # Ensure engine options include SSL for Supabase and enable pool_pre_ping
+    # Add connect_timeout to prevent hanging
     app.config.setdefault('SQLALCHEMY_ENGINE_OPTIONS', {
-        'connect_args': {'sslmode': 'require'},
+        'connect_args': {
+            'sslmode': 'require',
+            'connect_timeout': 5,  # 5 second timeout
+        },
         'pool_pre_ping': True,
+        'pool_recycle': 300,
     })
 
     from .models import db

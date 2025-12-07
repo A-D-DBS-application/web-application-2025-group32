@@ -127,13 +127,14 @@ function closeNotifications() {
               <th>Tijd</th>
               <th>Bureau</th>
               <th>Gebouw</th>
+              <th>Verdieping</th>
             </tr>
           </thead>
           <tbody>
             {% for r in upcoming %}
             {% if r.modified_by_admin %}
             <tr>
-              <td colspan="4" style="padding:8px 12px;background:#fff3cd;border-left:4px solid #ff8c00;border-bottom:none;">
+              <td colspan="5" style="padding:8px 12px;background:#fff3cd;border-left:4px solid #ff8c00;border-bottom:none;">
                 <span style="color:#ff8c00;font-weight:700;font-size:0.85rem">⚠ Deze reservatie is aangepast door de beheerder</span>
               </td>
             </tr>
@@ -142,6 +143,7 @@ function closeNotifications() {
               <td style="border-top:none;padding-top:4px;">{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }} - {{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
               <td style="border-top:none;padding-top:4px;">Bureau {{ r.desk_number or 'N/A' }}</td>
               <td style="border-top:none;padding-top:4px;">{{ r.building_adress or 'N/A' }}</td>
+              <td style="border-top:none;padding-top:4px;">{{ r.floor if r.floor is not none else '-' }}</td>
             </tr>
             {% else %}
             <tr>
@@ -149,6 +151,7 @@ function closeNotifications() {
               <td>{{ r.starttijd.strftime('%H:%M') if r.starttijd else '-' }} - {{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
               <td>Bureau {{ r.desk_number or 'N/A' }}</td>
               <td>{{ r.building_adress or 'N/A' }}</td>
+              <td>{{ r.floor if r.floor is not none else '-' }}</td>
             </tr>
             {% endif %}
             {% endfor %}
@@ -172,6 +175,7 @@ function closeNotifications() {
               <th>Tijd</th>
               <th>Bureau</th>
               <th>Gebouw</th>
+              <th>Verdieping</th>
               <th>Feedback</th>
             </tr>
           </thead>
@@ -188,6 +192,7 @@ function closeNotifications() {
               </td>
               <td>Bureau {{ r.desk_number or 'N/A' }}</td>
               <td>{{ r.building_adress or 'N/A' }}</td>
+              <td>{{ r.floor if r.floor is not none else '-' }}</td>
               <td>
                 {% if r.has_feedback %}
                   <span style="color:var(--success);font-size:0.9rem;margin-right:8px">✓ Gegeven</span>
@@ -210,6 +215,38 @@ function closeNotifications() {
   .home-sidebar { width: 280px; flex-shrink: 0; }
   .sidebar-title { margin: 0 0 18px 0; color: var(--primary); font-size: 1.15rem; }
   .sidebar-actions { display: flex; flex-direction: column; gap: 12px; }
+  
+  /* Responsive tabel styling voor mobiel */
+  @media (max-width: 768px) {
+    .data-table {
+      font-size: 0.85rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+      padding: 8px 4px;
+      white-space: nowrap;
+    }
+    
+    /* Maak specifieke kolommen smaller */
+    .data-table th:nth-child(3), /* Verdieping */
+    .data-table td:nth-child(3) {
+      width: 40px;
+      text-align: center;
+    }
+    
+    /* Buttons kleiner maken */
+    .data-table .btn {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+    }
+    
+    /* Tabel scrollable maken als nodig */
+    .card {
+      overflow-x: auto;
+    }
+  }
+  
   @media (max-width: 700px) {
     .sidebar-actions {
       flex-direction: row;

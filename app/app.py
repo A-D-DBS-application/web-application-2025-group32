@@ -109,9 +109,11 @@ def home():
             if res.desk and res.desk.building:
                 res.building_adress = res.desk.building.adress
                 res.desk_number = res.desk.desk_number
+                res.floor = res.desk.building.floor
             else:
                 res.building_adress = 'N/A'
                 res.desk_number = 'N/A'
+                res.floor = None
             # Check if feedback exists
             res.has_feedback = Feedback.query.filter_by(reservation_id=res.res_id).first() is not None
             # Debug: print modified_by_admin status
