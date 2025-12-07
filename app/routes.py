@@ -497,7 +497,7 @@ def feedback(res_id):
         flash("Je kunt alleen feedback geven voor je eigen reservaties.")
         return redirect(url_for('home'))
 
-    # Controleer of de reservatie is voltooid
+    # Controleer als reservatie voltooid
     if reservation.eindtijd > datetime.now():
         flash("Je kunt alleen feedback geven na voltooiing van de reservatie.")
         return redirect(url_for('home'))
