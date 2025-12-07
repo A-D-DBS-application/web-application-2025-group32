@@ -16,7 +16,7 @@ class User(db.Model):
     role = db.Column(db.String(50), default='user')
     
     # Relaties
-    reservations = db.relationship("Reservation", back_populates="user", lazy="dynamic")
+    reservations = db.relationship("Reservation", back_populates="user", lazy="dynamic", passive_deletes=True)
 
     def __repr__(self):
         return f"<User {self.user_id}>"
@@ -60,7 +60,7 @@ class Desk(db.Model):
     
     # Relaties
     building = db.relationship("Building", back_populates="desks")
-    reservations = db.relationship("Reservation", back_populates="desk", lazy="dynamic")
+    reservations = db.relationship("Reservation", back_populates="desk", lazy="dynamic", passive_deletes=True)
 
     def __repr__(self):
         return f"<Desk {self.desk_id}>"
@@ -86,7 +86,7 @@ class Reservation(db.Model):
     # Relaties
     user = db.relationship("User", back_populates="reservations")
     desk = db.relationship("Desk", back_populates="reservations")
-    feedback = db.relationship("Feedback", back_populates="reservation", uselist=False)
+    feedback = db.relationship("Feedback", back_populates="reservation", uselist=False, passive_deletes=True)
 
     def __repr__(self):
         return f"<Reservation {self.user_id} - {self.desk_id}>"
@@ -113,35 +113,3 @@ class Feedback(db.Model):
 
     def __repr__(self):
         return f"<Feedback {self.feedback_id}>"
-
-
-class AdminNotification(db.Model):
-    """
-    AdminNotification model - notificaties voor gebruikers over admin acties
-    """
-    __tablename__ = "admin_notification"
-    notification_id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.user_id", ondelete='CASCADE'), nullable=False)
-    reservation_id = db.Column(db.Integer, nullable=True)  # Null als verwijderd
-    notification_type = db.Column(db.String(50), nullable=False)  # 'modified' of 'deleted'
-    message = db.Column(db.Text, nullable=False)  # Bericht voor gebruiker
-    
-    # Voor deleted reservaties
-    deleted_desk_number = db.Column(db.String(50))
-    deleted_building = db.Column(db.String(200))
-    deleted_date = db.Column(db.String(20))
-    deleted_time = db.Column(db.String(20))
-    
-    # Voor modified reservaties  
-    changed_field = db.Column(db.String(50))  # Wat is er gewijzigd? (datum/tijd/bureau)
-    old_value = db.Column(db.String(200))  # Oude waarde
-    new_value = db.Column(db.String(200))  # Nieuwe waarde
-    
-    is_read = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=db.func.now())
-    
-    # Relatie
-    user = db.relationship("User", backref="notifications")
-
-    def __repr__(self):
-        return f"<AdminNotification {self.notification_id}>"

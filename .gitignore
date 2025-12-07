@@ -1,8 +1,0 @@
-# Ignore local database
-instance/local.db
-# Ignore Python environment
-venv/
-.idea/
-.vscode/
-__pycache__/
-*.pyc
