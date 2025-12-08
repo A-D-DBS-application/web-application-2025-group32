@@ -40,6 +40,14 @@ def get_current_user():
     return None
 
 
+def get_current_organization_id():
+    """Helper: haal organization_id op van huidige gebruiker"""
+    user = get_current_user()
+    if user and user.organization_id:
+        return user.organization_id
+    return 1  # Default naar Colruyt Group voor backwards compatibility
+
+
 @main.route("/reserve", methods=["GET", "POST"])
 def reserve():
     """
@@ -49,22 +57,29 @@ def reserve():
     - Begintijd en eindtijd input
     """
     user = get_current_user()
+    org_id = get_current_organization_id()
+    
     # Allow anonymous users to view the reservation form (GET). Only require
     # login for actions that create reservations (POST).
     buildings = []
     try:
-        # Get unique buildings (distinct by adress) and sort alphabetically
+        # Get unique buildings (distinct by adress) for current organization and sort alphabetically
         from sqlalchemy import distinct
-        unique_addresses = db.session.query(distinct(Building.adress)).order_by(Building.adress).all()
+        unique_addresses = db.session.query(distinct(Building.adress)).filter(
+            Building.organization_id == org_id
+        ).order_by(Building.adress).all()
         # For each unique address, get one building object
-        buildings = [Building.query.filter_by(adress=addr[0]).first() for addr in unique_addresses]
+        buildings = [Building.query.filter_by(adress=addr[0], organization_id=org_id).first() for addr in unique_addresses]
     except Exception:
         buildings = []
     
-    # Get all unique floors from buildings, sorted
+    # Get all unique floors from buildings of current organization, sorted
     floors = []
     try:
-        unique_floors = db.session.query(distinct(Building.floor)).filter(Building.floor.isnot(None)).order_by(Building.floor).all()
+        unique_floors = db.session.query(distinct(Building.floor)).filter(
+            Building.floor.isnot(None),
+            Building.organization_id == org_id
+        ).order_by(Building.floor).all()
         floors = [f[0] for f in unique_floors]
     except Exception:
         floors = [0, 1, 2]  # fallback
@@ -171,11 +186,12 @@ def available():
         flash("Eindtijd moet later zijn dan starttijd.")
         return redirect(url_for("main.reserve"))
 
-    # Query: alle bureaus, maar filteren op ZOWEL adress ALS floor (optioneel)
-    q = Desk.query
+    # Query: alle bureaus van huidige organisatie, maar filteren op ZOWEL adress ALS floor (optioneel)
+    org_id = get_current_organization_id()
+    q = Desk.query.filter(Desk.organization_id == org_id)
     
     # Filter op dienst: gebruiker ziet alleen bureaus van zijn eigen dienst
-    # Admins zien alle bureaus
+    # Admins zien alle bureaus (van hun organisatie)
     if user and not user.is_admin():
         # Haal dienst op van gebruiker
         user_dienst = user.dienst
@@ -190,7 +206,7 @@ def available():
     has_floor = floor_str and floor_str.strip()
     
     if has_building or has_floor:
-        building_filters = []
+        building_filters = [Building.organization_id == org_id]  # Always filter by organization
         if has_building:
             building_filters.append(Building.adress == building_adress.strip())
         if has_floor:
@@ -210,7 +226,7 @@ def available():
             else:
                 # Geen matching buildings -> geen resultaten
                 q = q.filter(False)
-    # Als geen filters, toon alle bureaus
+    # Als geen filters, toon alle bureaus (van de organisatie)
 
     candidate_desks = q.all()
 
@@ -218,15 +234,21 @@ def available():
     monitor_filter = (request.args.get("monitor") or "").strip().lower()
     chair_filter = (request.args.get("chair") or "").strip().lower()
 
-    # Haal alle unieke scherm en stoel types op uit de database (lowercase)
+    # Haal alle unieke scherm en stoel types op uit de database (lowercase) voor deze organisatie
     try:
-        all_screens_raw = db.session.query(Desk.screen).filter(Desk.screen.isnot(None)).distinct().all()
+        all_screens_raw = db.session.query(Desk.screen).filter(
+            Desk.screen.isnot(None),
+            Desk.organization_id == org_id
+        ).distinct().all()
         all_screens = sorted([s[0].lower() for s in all_screens_raw if s[0]])
     except Exception:
         all_screens = []
     
     try:
-        all_chairs_raw = db.session.query(Desk.chair).filter(Desk.chair.isnot(None)).distinct().all()
+        all_chairs_raw = db.session.query(Desk.chair).filter(
+            Desk.chair.isnot(None),
+            Desk.organization_id == org_id
+        ).distinct().all()
         all_chairs = sorted([c[0].lower() for c in all_chairs_raw if c[0]])
     except Exception:
         all_chairs = []
@@ -239,11 +261,12 @@ def available():
     if chair_filter and chair_filter in all_chairs:
         candidate_desks = [d for d in candidate_desks if d.chair and chair_filter in d.chair.lower()]
 
-    # Filter: verwijder bureaus met overlappende reservaties
+    # Filter: verwijder bureaus met overlappende reservaties (binnen dezelfde organisatie)
     available_desks = []
     for desk in candidate_desks:
         overlapping = Reservation.query.filter(
             Reservation.desk_id == desk.desk_id,
+            Reservation.organization_id == org_id,
             Reservation.starttijd < end_datetime,
             start_datetime < Reservation.eindtijd
         ).first()
@@ -257,7 +280,8 @@ def available():
         for desk in available_desks:
             count = Reservation.query.filter(
                 Reservation.desk_id == desk.desk_id,
-                Reservation.user_id == user.user_id
+                Reservation.user_id == user.user_id,
+                Reservation.organization_id == org_id
             ).count()
             desk_booking_counts[desk.desk_id] = count
         
@@ -276,9 +300,9 @@ def available():
         "chair": request.args.get("chair", "") or "",
     }
 
-    # Safe get for buildings list
+    # Safe get for buildings list van deze organisatie
     try:
-        all_buildings = Building.query.all()
+        all_buildings = Building.query.filter_by(organization_id=org_id).all()
     except Exception:
         all_buildings = []
 
@@ -301,10 +325,16 @@ def desk_detail(desk_id):
     - Bevestig reservatie of annuleer
     """
     user = get_current_user()
+    org_id = get_current_organization_id()
     # Allow viewing desk details without login; require login for confirmation.
 
     desk = Desk.query.filter_by(desk_id=desk_id).first()
     if not desk:
+        flash("Bureau niet gevonden.")
+        return redirect(url_for("main.reserve"))
+    
+    # Check if desk belongs to current user's organization
+    if org_id and desk.building.organization_id != org_id:
         flash("Bureau niet gevonden.")
         return redirect(url_for("main.reserve"))
 
@@ -343,6 +373,7 @@ def desk_detail(desk_id):
 
                 overlapping = Reservation.query.filter(
                     Reservation.desk_id == desk.desk_id,
+                    Reservation.organization_id == org_id,
                     Reservation.starttijd < end_datetime,
                     start_datetime < Reservation.eindtijd
                 ).first()
@@ -357,6 +388,7 @@ def desk_detail(desk_id):
                 reservation = Reservation(
                     user_id=user.user_id,
                     desk_id=desk.desk_id,
+                    organization_id=org_id,
                     starttijd=start_datetime,
                     eindtijd=end_datetime
                 )
@@ -400,13 +432,16 @@ def mijn_reservaties():
     if not user:
         flash("Gelieve eerst aan te melden om je reservaties te zien.")
         return redirect(url_for('login', next=url_for('main.mijn_reservaties')))
+    
+    org_id = get_current_organization_id()
 
     try:
         from datetime import datetime
         now = datetime.now()
-        # Alleen toekomstige reservaties
+        # Alleen toekomstige reservaties van deze organisatie
         reservations = Reservation.query.filter(
             Reservation.user_id == user.user_id,
+            Reservation.organization_id == org_id,
             Reservation.starttijd >= now
         ).order_by(Reservation.starttijd).all()
     except Exception:
@@ -447,9 +482,14 @@ def cancel_reservation(res_id):
     if not user:
         flash("Gelieve eerst aan te melden om reservaties te beheren.")
         return redirect(url_for('login', next=url_for('main.mijn_reservaties')))
+    
+    org_id = get_current_organization_id()
 
     try:
-        reservation = Reservation.query.filter_by(res_id=res_id).first()
+        reservation = Reservation.query.filter_by(
+            res_id=res_id,
+            organization_id=org_id
+        ).first()
     except Exception:
         reservation = None
 
@@ -482,10 +522,15 @@ def feedback(res_id):
     if not user:
         flash("Gelieve eerst aan te melden om feedback te geven.")
         return redirect(url_for('login', next=url_for('main.feedback', res_id=res_id)))
+    
+    org_id = get_current_organization_id()
 
     # Haal reservatie op
     try:
-        reservation = Reservation.query.filter_by(res_id=res_id).first()
+        reservation = Reservation.query.filter_by(
+            res_id=res_id,
+            organization_id=org_id
+        ).first()
     except Exception:
         reservation = None
 
@@ -539,6 +584,7 @@ def feedback(res_id):
                 # Nieuwe feedback
                 feedback_obj = Feedback(
                     reservation_id=res_id,
+                    organization_id=org_id,
                     netheid_score=netheid,
                     wifi_score=wifi,
                     ruimte_score=ruimte,
@@ -577,15 +623,20 @@ def feedback_analysis():
         flash("Gelieve eerst aan te melden.")
         return redirect(url_for('login'))
     
+    org_id = get_current_organization_id()
+    
     try:
         from app.analytics import analyze_feedback_from_db
         from datetime import datetime
         
-        # Voer de complexe analyse uit
-        analysis = analyze_feedback_from_db(db.session)
+        # Voer de complexe analyse uit voor deze organisatie
+        analysis = analyze_feedback_from_db(db.session, organization_id=org_id)
         
-        # Haal ongelezen count op
-        unread_count = db.session.query(Feedback).filter_by(is_reviewed=False).count()
+        # Haal ongelezen count op voor deze organisatie
+        unread_count = db.session.query(Feedback).filter_by(
+            is_reviewed=False,
+            organization_id=org_id
+        ).count()
         
         # Voeg feedback records toe aan analysis voor gelezen/ongelezen status
         for item in analysis.get('detailed_items', []):
@@ -614,10 +665,16 @@ def feedback_analysis():
 @main.route("/admin/feedback/<int:feedback_id>/mark-reviewed", methods=["POST"])
 def mark_feedback_reviewed(feedback_id):
     """Markeer feedback als gelezen door admin."""
+    user = get_current_user()
+    org_id = get_current_organization_id()
+    
     try:
         from datetime import datetime
         
-        feedback = db.session.query(Feedback).filter_by(feedback_id=feedback_id).first()
+        feedback = db.session.query(Feedback).filter_by(
+            feedback_id=feedback_id,
+            organization_id=org_id
+        ).first()
         if feedback:
             feedback.is_reviewed = True
             feedback.reviewed_at = datetime.now()
@@ -635,21 +692,29 @@ def mark_feedback_reviewed(feedback_id):
 def admin_dashboard():
     """Admin dashboard - bureaus beheren en koppelen aan diensten"""
     user = get_current_user()
+    org_id = get_current_organization_id()
     
     # Check voor edit mode en add new parameters
     edit_desk_id = request.args.get('edit', type=int)
     add_new = request.args.get('add_new', type=int)
     
     try:
-        # Haal alle desks op met building info, gesorteerd op bureau nummer
-        desks = Desk.query.join(Building).order_by(Desk.desk_number).all()
+        # Haal alle desks op met building info voor deze organisatie, gesorteerd op bureau nummer
+        desks = Desk.query.join(Building).filter(
+            Building.organization_id == org_id
+        ).order_by(Desk.desk_number).all()
         
-        # Haal alle unieke gebouwen op (distinct op adress om duplicaten te voorkomen)
-        buildings_query = db.session.query(Building.adress, Building.building_id).distinct(Building.adress).order_by(Building.adress).all()
+        # Haal alle unieke gebouwen op voor deze organisatie
+        buildings_query = db.session.query(Building.adress, Building.building_id).filter(
+            Building.organization_id == org_id
+        ).distinct(Building.adress).order_by(Building.adress).all()
         buildings_list = [{'id': b.building_id, 'naam': b.adress} for b in buildings_query]
         
-        # Haal alle unieke scherm types op uit de database
-        screens_query = db.session.query(Desk.screen).filter(Desk.screen.isnot(None)).distinct().all()
+        # Haal alle unieke scherm types op uit de database voor deze organisatie
+        screens_query = db.session.query(Desk.screen).join(Building).filter(
+            Building.organization_id == org_id,
+            Desk.screen.isnot(None)
+        ).distinct().all()
         screens_raw = [s[0] for s in screens_query if s[0]]
         # Custom volgorde: single, dual, triple, dan de rest alfabetisch
         screen_order = ['single', 'dual', 'triple']
@@ -664,8 +729,11 @@ def admin_dashboard():
         screens_ordered.extend(sorted(screens_raw))
         screens_list = screens_ordered
         
-        # Haal alle unieke stoel types op uit de database
-        chairs_query = db.session.query(Desk.chair).filter(Desk.chair.isnot(None)).distinct().all()
+        # Haal alle unieke stoel types op uit de database voor deze organisatie
+        chairs_query = db.session.query(Desk.chair).join(Building).filter(
+            Building.organization_id == org_id,
+            Desk.chair.isnot(None)
+        ).distinct().all()
         chairs_raw = [c[0] for c in chairs_query if c[0]]
         # Custom volgorde: standard, standing, ergonomic, dan de rest alfabetisch
         chair_order = ['standard', 'standing', 'ergonomic']
@@ -701,12 +769,18 @@ def admin_dashboard():
             if edit_desk_id and desk.desk_id == edit_desk_id:
                 edit_desk_number = desk.desk_number
         
-        # Haal alle unieke diensten op uit de user tabel
-        diensten_query = db.session.query(User.dienst).filter(User.dienst.isnot(None)).distinct().all()
+        # Haal alle unieke diensten op uit de user tabel van deze organisatie
+        diensten_query = db.session.query(User.dienst).filter(
+            User.organization_id == org_id,
+            User.dienst.isnot(None)
+        ).distinct().all()
         diensten_set = set([d[0] for d in diensten_query if d[0]])
         
-        # Voeg ook diensten toe die al gekoppeld zijn aan bureaus
-        bestaande_diensten = db.session.query(Desk.dienst).filter(Desk.dienst.isnot(None)).distinct().all()
+        # Voeg ook diensten toe die al gekoppeld zijn aan bureaus van deze organisatie
+        bestaande_diensten = db.session.query(Desk.dienst).join(Building).filter(
+            Building.organization_id == org_id,
+            Desk.dienst.isnot(None)
+        ).distinct().all()
         for dienst in bestaande_diensten:
             if dienst[0]:
                 diensten_set.add(dienst[0])
@@ -740,11 +814,16 @@ def admin_dashboard():
 @main.route('/admin/desk/update/<int:desk_id>', methods=['POST'])
 @require_admin
 def admin_update_desk(desk_id):
-    """Admin kan desk details wijzigen (bureau, gebouw, dienst, scherm, stoel)"""
+    """Admin kan desk details van hun organisatie wijzigen (bureau, gebouw, dienst, scherm, stoel)"""
     user = get_current_user()
+    org_id = get_current_organization_id()
     
     try:
-        desk = Desk.query.filter_by(desk_id=desk_id).first()
+        # Check dat desk behoort tot de huidige organisatie
+        desk = Desk.query.join(Building).filter(
+            Desk.desk_id == desk_id,
+            Building.organization_id == org_id
+        ).first()
         if not desk:
             flash("Bureau niet gevonden.", "danger")
             return redirect(url_for('main.admin_dashboard'))
@@ -768,8 +847,12 @@ def admin_update_desk(desk_id):
         if new_building_id == 'other' and new_building_other:
             # Haal floor waarde op uit form
             floor_value = int(request.form.get('floor', 1))
-            # Maak nieuw gebouw aan met opgegeven floor
-            new_building = Building(adress=new_building_other, floor=floor_value)
+            # Maak nieuw gebouw aan voor deze organisatie met opgegeven floor
+            new_building = Building(
+                adress=new_building_other, 
+                floor=floor_value,
+                organization_id=org_id
+            )
             db.session.add(new_building)
             db.session.flush()  # Om building_id te krijgen
             desk.building_id = new_building.building_id
@@ -777,18 +860,26 @@ def admin_update_desk(desk_id):
         elif new_building_id and new_building_id != 'other':
             # Check of verdieping is gewijzigd
             floor_value = request.form.get('floor')
-            selected_building = Building.query.get(int(new_building_id))
+            selected_building = Building.query.filter_by(
+                building_id=int(new_building_id),
+                organization_id=org_id
+            ).first()
             
             if floor_value and selected_building and int(floor_value) != selected_building.floor:
                 # Verdieping is gewijzigd! Zoek of maak een building met deze gebouw+verdieping combinatie
                 target_building = Building.query.filter_by(
                     adress=selected_building.adress,
-                    floor=int(floor_value)
+                    floor=int(floor_value),
+                    organization_id=org_id
                 ).first()
                 
                 if not target_building:
                     # Maak nieuw building record aan voor deze gebouw+verdieping combinatie
-                    target_building = Building(adress=selected_building.adress, floor=int(floor_value))
+                    target_building = Building(
+                        adress=selected_building.adress, 
+                        floor=int(floor_value),
+                        organization_id=org_id
+                    )
                     db.session.add(target_building)
                     db.session.flush()
                     flash(f"Nieuwe locatie '{selected_building.adress}' verdieping {floor_value} aangemaakt.", "success")
@@ -835,8 +926,9 @@ def admin_update_desk(desk_id):
 @main.route('/admin/desk/create', methods=['POST'])
 @require_admin
 def admin_create_desk():
-    """Admin kan nieuw bureau toevoegen"""
+    """Admin kan nieuw bureau toevoegen voor hun organisatie"""
     user = get_current_user()
+    org_id = get_current_organization_id()
     
     try:
         # Haal waardes op uit form
@@ -857,23 +949,38 @@ def admin_create_desk():
         
         desk_number = int(new_desk_number)
         
-        # Check of bureau nummer al bestaat
-        existing = Desk.query.filter_by(desk_number=desk_number).first()
+        # Check of bureau nummer al bestaat in deze organisatie
+        existing = Desk.query.join(Building).filter(
+            Desk.desk_number == desk_number,
+            Building.organization_id == org_id
+        ).first()
         if existing:
-            flash(f"Bureau {desk_number} bestaat al.", "danger")
+            flash(f"Bureau {desk_number} bestaat al in uw organisatie.", "danger")
             return redirect(url_for('main.admin_dashboard', add_new=1))
         
         # Handle gebouw
         if new_building_id == 'other' and new_building_other:
             # Haal floor waarde op uit form
             floor_value = int(request.form.get('floor', 1))
-            # Maak nieuw gebouw aan met opgegeven floor
-            new_building = Building(adress=new_building_other, floor=floor_value)
+            # Maak nieuw gebouw aan voor deze organisatie met opgegeven floor
+            new_building = Building(
+                adress=new_building_other, 
+                floor=floor_value,
+                organization_id=org_id
+            )
             db.session.add(new_building)
             db.session.flush()
             building_id = new_building.building_id
             flash(f"Nieuw gebouw '{new_building_other}' (verdieping {floor_value}) aangemaakt.", "success")
         elif new_building_id and new_building_id != 'other':
+            # Validate dat building behoort tot organisatie
+            building = Building.query.filter_by(
+                building_id=int(new_building_id),
+                organization_id=org_id
+            ).first()
+            if not building:
+                flash("Ongeldig gebouw geselecteerd.", "danger")
+                return redirect(url_for('main.admin_dashboard', add_new=1))
             building_id = int(new_building_id)
         else:
             flash("Selecteer een gebouw.", "danger")
@@ -910,6 +1017,7 @@ def admin_create_desk():
         new_desk = Desk(
             desk_number=desk_number,
             building_id=building_id,
+            organization_id=org_id,
             dienst=dienst,
             screen=screen,
             chair=chair
@@ -933,23 +1041,34 @@ def admin_create_desk():
 @main.route('/admin/desk/delete/<int:desk_id>', methods=['POST'])
 @require_admin
 def admin_delete_desk(desk_id):
-    """Admin kan desk verwijderen"""
+    """Admin kan desk van hun organisatie verwijderen"""
     user = get_current_user()
+    org_id = get_current_organization_id()
     
     try:
-        desk = Desk.query.filter_by(desk_id=desk_id).first()
+        # Check dat desk behoort tot de huidige organisatie
+        desk = Desk.query.join(Building).filter(
+            Desk.desk_id == desk_id,
+            Building.organization_id == org_id
+        ).first()
         if not desk:
             flash("Bureau niet gevonden.", "danger")
             return redirect(url_for('main.admin_dashboard'))
         
         desk_number = desk.desk_number
         
-        # Vind het volgende bureau (hogere desk_number) om naartoe te scrollen
-        next_desk = Desk.query.filter(Desk.desk_number > desk_number).order_by(Desk.desk_number).first()
+        # Vind het volgende bureau (hogere desk_number) binnen deze organisatie om naartoe te scrollen
+        next_desk = Desk.query.join(Building).filter(
+            Desk.desk_number > desk_number,
+            Building.organization_id == org_id
+        ).order_by(Desk.desk_number).first()
         
-        # Als er geen volgend bureau is, probeer het vorige
+        # Als er geen volgend bureau is, probeer het vorige binnen organisatie
         if not next_desk:
-            next_desk = Desk.query.filter(Desk.desk_number < desk_number).order_by(Desk.desk_number.desc()).first()
+            next_desk = Desk.query.join(Building).filter(
+                Desk.desk_number < desk_number,
+                Building.organization_id == org_id
+            ).order_by(Desk.desk_number.desc()).first()
         
         db.session.delete(desk)
         db.session.commit()
@@ -970,11 +1089,15 @@ def admin_delete_desk(desk_id):
 @main.route('/admin/reservation/delete/<int:res_id>', methods=['POST'])
 @require_admin
 def admin_delete_reservation(res_id):
-    """Admin kan elke reservatie verwijderen"""
+    """Admin kan elke reservatie van hun organisatie verwijderen"""
     user = get_current_user()
+    org_id = get_current_organization_id()
     
     try:
-        reservation = Reservation.query.filter_by(res_id=res_id).first()
+        reservation = Reservation.query.filter_by(
+            res_id=res_id,
+            organization_id=org_id
+        ).first()
         if not reservation:
             flash("Reservatie niet gevonden.")
             return redirect(url_for('main.admin_reservations_overview'))
@@ -999,9 +1122,10 @@ def admin_delete_reservation(res_id):
 def admin_reservations_overview():
     """Admin overzicht van alle toekomstige reservaties met verdachte reservaties gemarkeerd"""
     user = get_current_user()
+    org_id = get_current_organization_id()
     
     try:
-        # Haal alle toekomstige reservaties op met user, desk en building info
+        # Haal alle toekomstige reservaties op van deze organisatie met user, desk en building info
         now = datetime.now()
         reservations_raw = db.session.query(
             Reservation.res_id,
@@ -1017,7 +1141,9 @@ def admin_reservations_overview():
         ).join(User, Reservation.user_id == User.user_id
         ).join(Desk, Reservation.desk_id == Desk.desk_id
         ).join(Building, Desk.building_id == Building.building_id
-        ).filter(Reservation.starttijd >= now
+        ).filter(
+            Reservation.starttijd >= now,
+            Reservation.organization_id == org_id
         ).order_by(Reservation.starttijd).all()
         
         # Identificeer verdachte reservaties
@@ -1038,10 +1164,11 @@ def admin_reservations_overview():
                 is_suspicious = True
                 suspicious_reasons.append("Loopt tot na 22:00 uur")
             
-            # Check 3: Meerdere reservaties op hetzelfde moment
+            # Check 3: Meerdere reservaties op hetzelfde moment binnen organisatie
             overlapping = db.session.query(Reservation).filter(
                 Reservation.user_id == res.user_id,
                 Reservation.res_id != res.res_id,
+                Reservation.organization_id == org_id,
                 Reservation.starttijd < res.eindtijd,
                 res.starttijd < Reservation.eindtijd
             ).first()
@@ -1084,11 +1211,15 @@ def admin_reservations_overview():
 @main.route('/admin/reservation/edit/<int:res_id>', methods=['GET', 'POST'])
 @require_admin
 def admin_edit_reservation(res_id):
-    """Admin kan reservatie wijzigen"""
+    """Admin kan reservatie van hun organisatie wijzigen"""
     user = get_current_user()
+    org_id = get_current_organization_id()
     
     try:
-        reservation = Reservation.query.filter_by(res_id=res_id).first()
+        reservation = Reservation.query.filter_by(
+            res_id=res_id,
+            organization_id=org_id
+        ).first()
     except Exception:
         reservation = None
     
@@ -1115,10 +1246,11 @@ def admin_edit_reservation(res_id):
                 flash("Eindtijd moet later zijn dan starttijd.")
                 return redirect(url_for('main.admin_edit_reservation', res_id=res_id))
             
-            # Check overlap met andere reservaties (behalve deze zelf)
+            # Check overlap met andere reservaties binnen organisatie (behalve deze zelf)
             overlapping = Reservation.query.filter(
                 Reservation.desk_id == desk_id,
                 Reservation.res_id != res_id,
+                Reservation.organization_id == org_id,
                 Reservation.starttijd < end_datetime,
                 start_datetime < Reservation.eindtijd
             ).first()
@@ -1144,7 +1276,7 @@ def admin_edit_reservation(res_id):
             return redirect(url_for('main.admin_edit_reservation', res_id=res_id))
     
     # GET: toon formulier
-    buildings = Building.query.all()
+    buildings = Building.query.filter_by(organization_id=org_id).all()
     
     return render_template('admin_edit_reservation.html', 
                          user=user,
@@ -1156,13 +1288,14 @@ def admin_edit_reservation(res_id):
 @main.route('/admin/reservation/create', methods=['GET', 'POST'])
 @require_admin
 def admin_create_reservation():
-    """Admin kan reservatie aanmaken voor een gebruiker"""
+    """Admin kan reservatie aanmaken voor een gebruiker van hun organisatie"""
     user = get_current_user()
+    org_id = get_current_organization_id()
     
-    # Haal alle users en buildings op
+    # Haal alle users en buildings van deze organisatie op
     try:
-        all_users = User.query.order_by(User.user_name).all()
-        all_buildings = Building.query.all()
+        all_users = User.query.filter_by(organization_id=org_id).order_by(User.user_name).all()
+        all_buildings = Building.query.filter_by(organization_id=org_id).all()
     except Exception:
         all_users = []
         all_buildings = []
@@ -1192,9 +1325,10 @@ def admin_create_reservation():
                 flash("Eindtijd moet later zijn dan starttijd.")
                 return redirect(url_for('main.admin_create_reservation'))
             
-            # Check overlap
+            # Check overlap binnen organisatie
             overlapping = Reservation.query.filter(
                 Reservation.desk_id == desk_id,
+                Reservation.organization_id == org_id,
                 Reservation.starttijd < end_datetime,
                 start_datetime < Reservation.eindtijd
             ).first()
@@ -1207,6 +1341,7 @@ def admin_create_reservation():
             new_reservation = Reservation(
                 user_id=selected_user_id,
                 desk_id=desk_id,
+                organization_id=org_id,
                 starttijd=start_datetime,
                 eindtijd=end_datetime
             )
@@ -1251,18 +1386,31 @@ def api_desks():
 @require_admin
 def admin_personeelsbeheer():
     user = get_current_user()
-    # Haal alle medewerkers op, gesorteerd op achternaam
-    medewerkers = User.query.order_by(User.user_last_name.asc()).all()
-    # Haal alle unieke diensten op
-    diensten_query = db.session.query(User.dienst).filter(User.dienst.isnot(None)).distinct().all()
+    org_id = get_current_organization_id()
+    
+    # Haal alle medewerkers op van deze organisatie, gesorteerd op achternaam
+    medewerkers = User.query.filter_by(organization_id=org_id).order_by(User.user_last_name.asc()).all()
+    
+    # Haal alle unieke diensten op van deze organisatie
+    diensten_query = db.session.query(User.dienst).filter(
+        User.organization_id == org_id,
+        User.dienst.isnot(None)
+    ).distinct().all()
     diensten = sorted([d[0] for d in diensten_query if d[0]])
+    
     return render_template('admin_personeelsbeheer.html', user=user, medewerkers=medewerkers, diensten=diensten, is_admin=True)
 
 # Wijzig dienst van medewerker
 @main.route('/admin/medewerker/update/<int:user_id>', methods=['POST'])
 @require_admin
 def admin_update_medewerker(user_id):
-    user = User.query.filter_by(user_id=user_id).first()
+    current_user = get_current_user()
+    org_id = get_current_organization_id()
+    
+    user = User.query.filter_by(
+        user_id=user_id,
+        organization_id=org_id
+    ).first()
     if not user:
         flash('Medewerker niet gevonden.', 'danger')
         return redirect(url_for('main.admin_personeelsbeheer'))
@@ -1280,10 +1428,17 @@ def admin_update_medewerker(user_id):
 @main.route('/admin/medewerker/delete/<int:user_id>', methods=['POST'])
 @require_admin
 def admin_delete_medewerker(user_id):
-    user = User.query.filter_by(user_id=user_id).first()
+    current_user = get_current_user()
+    org_id = get_current_organization_id()
+    
+    user = User.query.filter_by(
+        user_id=user_id,
+        organization_id=org_id
+    ).first()
     if not user:
         flash('Medewerker niet gevonden.', 'danger')
         return redirect(url_for('main.admin_personeelsbeheer'))
+    
     db.session.delete(user)
     db.session.commit()
     flash('Medewerker succesvol verwijderd.', 'success')
@@ -1293,27 +1448,41 @@ def admin_delete_medewerker(user_id):
 @main.route('/admin/medewerker/create', methods=['POST'])
 @require_admin
 def admin_create_medewerker():
+    current_user = get_current_user()
+    org_id = get_current_organization_id()
+    
     try:
         naam = request.form.get('user_name', '').strip()
         achternaam = request.form.get('user_last_name', '').strip()
         email = request.form.get('user_email', '').strip()
         dienst = request.form.get('dienst')
         dienst_other = request.form.get('dienst_other', '').strip()
+        
         if dienst == 'other' and dienst_other:
             dienst_final = dienst_other
         else:
             dienst_final = dienst
+            
         if not naam or not achternaam or not email or not dienst_final:
             flash('Vul alle velden in.', 'danger')
             return redirect(url_for('main.admin_personeelsbeheer'))
         
-        # Check if email already exists
-        existing_user = User.query.filter_by(user_email=email).first()
+        # Check if email already exists in this organization
+        existing_user = User.query.filter_by(
+            user_email=email,
+            organization_id=org_id
+        ).first()
         if existing_user:
-            flash(f'Een medewerker met email {email} bestaat al.', 'danger')
+            flash(f'Een medewerker met email {email} bestaat al in uw organisatie.', 'danger')
             return redirect(url_for('main.admin_personeelsbeheer'))
         
-        nieuwe_user = User(user_name=naam, user_last_name=achternaam, user_email=email, dienst=dienst_final)
+        nieuwe_user = User(
+            user_name=naam, 
+            user_last_name=achternaam, 
+            user_email=email, 
+            organization_id=org_id,
+            dienst=dienst_final
+        )
         db.session.add(nieuwe_user)
         db.session.commit()
         flash('Nieuwe medewerker succesvol toegevoegd.', 'success')

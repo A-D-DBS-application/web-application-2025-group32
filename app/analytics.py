@@ -797,12 +797,13 @@ class FeedbackTopicExtractor:
         return distribution
 
 
-def analyze_feedback_from_db(db_session) -> Dict:
+def analyze_feedback_from_db(db_session, organization_id=None) -> Dict:
     """
     Hulpfunctie om feedback direct uit de database te analyseren.
     
     Args:
         db_session: SQLAlchemy database sessie
+        organization_id: Optioneel organization_id om feedback te filteren
         
     Returns:
         Analyse resultaten dictionary
@@ -810,13 +811,19 @@ def analyze_feedback_from_db(db_session) -> Dict:
     from app.models import Feedback, Reservation, Desk, Building
     
     # Haal alle feedback op met joined desk/building info
-    feedback_records = db_session.query(Feedback).join(
+    query = db_session.query(Feedback).join(
         Reservation, Feedback.reservation_id == Reservation.res_id
     ).join(
         Desk, Reservation.desk_id == Desk.desk_id
     ).join(
         Building, Desk.building_id == Building.building_id
-    ).all()
+    )
+    
+    # Voeg organisatie filtering toe als opgegeven
+    if organization_id is not None:
+        query = query.filter(Feedback.organization_id == organization_id)
+    
+    feedback_records = query.all()
     
     # Converteer naar dictionaries
     feedback_list = []

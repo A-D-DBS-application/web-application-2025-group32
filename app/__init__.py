@@ -29,6 +29,7 @@ def create_app():
         app.register_blueprint(main)
     except Exception as e:
         print(f"[ERROR] Failed to register Blueprint 'main': {e}")
+        # Print full traceback for debugging (useful during development and deployment)
         import traceback
         traceback.print_exc()
         # if routes cannot be imported here, caller can register later
