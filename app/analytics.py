@@ -307,12 +307,13 @@ class FeedbackTopicExtractor:
     
     def calculate_urgency_score(self, sentiment: Dict, scores: Dict, topics: List[Tuple[str, float]]) -> float:
         """
-        Bereken urgentie score voor feedback (hoger = urgenter).
+        Bereken uitgebreide urgentie score voor feedback (hoger = urgenter).
         
-        Dringende feedback heeft:
-        - Lage numerieke scores
-        - Negatief sentiment
-        - Kritische topics (wifi, netheid, faciliteiten)
+        Combineert numerieke scores met sentiment en topic analyse:
+        - Basis score van numerieke ratings
+        - Extra urgency voor negatieve sentiment
+        - Extra urgency voor kritische topics
+        - Extra urgency voor negatieve woorden
         
         Args:
             sentiment: Sentiment analyse resultaat
@@ -324,19 +325,16 @@ class FeedbackTopicExtractor:
         """
         urgency = 0
         
-        # 1. Score component (lage scores = urgenter)
+        # 1. Basis score component (gebaseerd op numerieke scores)
         valid_scores = [s for s in scores.values() if s is not None]
         if valid_scores:
-            avg_score = np.mean(valid_scores)
-            min_score = np.min(valid_scores)
-            
-            # Score van 1-2 is zeer urgent
-            if min_score <= 2:
-                urgency += 40
-            elif avg_score <= 2.5:
-                urgency += 30
-            elif avg_score <= 3:
-                urgency += 15
+            total_actual = sum(valid_scores)
+            max_possible = len(valid_scores) * 5
+            percentage = (total_actual / max_possible) * 100
+            # Basis urgency van numerieke scores
+            urgency = 100 - percentage
+        else:
+            urgency = 50  # Default als geen scores
         
         # 2. Sentiment component (negatief = urgenter)
         sentiment_score = sentiment.get('sentiment_score', 0)
@@ -348,7 +346,7 @@ class FeedbackTopicExtractor:
             urgency += 10
         
         # 3. Topic component (kritische onderwerpen)
-        critical_topics = {'wifi', 'netheid', 'faciliteiten', 'comfort'}
+        critical_topics = {'wifi', 'netheid', 'faciliteiten', 'comfort', 'slecht', 'problemen'}
         for topic, relevance in topics[:3]:  # Check top 3 topics
             if topic in critical_topics:
                 urgency += 10 * relevance
@@ -362,123 +360,199 @@ class FeedbackTopicExtractor:
         elif negative_count >= 1:
             urgency += 5
         
-        return min(urgency, 100)  # Cap at 100
+        return max(0, min(urgency, 100))  # Begrensd tussen 0-100
+    
+    def calculate_basic_score(self, scores: Dict) -> float:
+        """
+        Bereken de basis percentage score enkel gebaseerd op numerieke ratings.
+        
+        Args:
+            scores: Numerieke scores dictionary
+            
+        Returns:
+            Percentage score (0-100)
+        """
+        valid_scores = [s for s in scores.values() if s is not None]
+        if not valid_scores:
+            return 0
+        
+        total_actual = sum(valid_scores)
+        max_possible = len(valid_scores) * 5
+        percentage = (total_actual / max_possible) * 100
+        
+        return percentage
     
     def summarize_text(self, text: str, max_length: int = 100) -> str:
         """
-        Genereer een compacte samenvatting van feedback tekst met bullet points.
-        Verwijdert filler woorden en splitst op onderwerpen.
+        Genereer een compacte samenvatting van feedback tekst door stopwoorden te verwijderen
+        en verschillende onderwerpen te splitsen in bullet points.
         
         Args:
             text: Feedback tekst
-            max_length: Maximale lengte (niet strikt gebruikt)
+            max_length: Maximale lengte van samenvatting (genegeerd - altijd samenvatten)
             
         Returns:
-            Samengevatte tekst met bullet points
+            Samengevatte tekst zonder stopwoorden, komma-gescheiden voor verschillende onderwerpen
         """
         if not text:
             return ""
         
-        # Filler woorden en stopwoorden die we willen verwijderen
-        filler_words = {
-            'ja', 'nee', 'oh', 'ah', 'eh', 'nou', 'dus', 'eigenlijk', 
-            'gewoon', 'zoals', 'man', 'jongen', 'zeg', 'hoor', 'he', 'hè',
-            'heel', 'erg', 'helaas', 'misschien', 'toch', 'wel',
-            'de', 'het', 'een', 'maar', 'ook', 'dat', 'die', 'deze', 'dit',
-            'er', 'zijn', 'was', 'waren', 'is', 'heeft', 'hebben', 'te',
-            'vond', 'vind', 'vinden', 'enkel', 'alleen', 'beetje', 'iets'
+        # Nederlandse stopwoorden die we willen verwijderen
+        stopwords = {
+            'de', 'het', 'een', 'en', 'van', 'in', 'op', 'te', 'voor', 'met', 
+            'is', 'zijn', 'was', 'er', 'maar', 'om', 'aan', 'dat', 'die', 'dit',
+            'als', 'bij', 'dan', 'heeft', 'hem', 'hier', 'hun', 'ik', 'je', 
+            'kan', 'meer', 'mijn', 'nog', 'nu', 'ook', 'of', 'over', 
+            'onder', 'uit', 'voor', 'want', 'waren', 'wat', 'werd', 'wie', 
+            'wordt', 'zeer', 'zich', 'zo', 'zonder', 'naar', 'door', 'moet',
+            'hebben', 'had', 'ben', 'bent', 'deze', 'geen', 'geweest', 'haar', 
+            'heel', 'iets', 'iemand', 'kon', 'kunnen', 'mag', 'veel', 'wel', 
+            'zal', 'zelf', 'zou', 'altijd', 'alleen', 'andere', 'beide',
+            'dus', 'echter', 'eerst', 'eigenlijk', 'erg', 'gewoon',
+            'hoe', 'juist', 'meestal', 'misschien', 'omdat', 'vaak', 'vooral',
+            'waar', 'waarom', 'weinig', 'wel', 'zoals'
         }
         
-        # Onderwerp woorden (deze bepalen het onderwerp van een zin)
+        # Onderwerp woorden (voor het detecteren van verschillende onderwerpen)
         subject_words = {
             'wifi', 'internet', 'verbinding', 'netwerk',
-            'bureau', 'stoel', 'scherm', 'toetsenbord', 'muis', 'tafel',
-            'ruimte', 'kamer', 'zaal', 'locatie', 'plaats',
-            'geluid', 'lawaai', 'stil', 'luid',
-            'temperatuur', 'warm', 'koud',
-            'netheid', 'proper', 'vuil', 'vies', 'schoon'
+            'bureau', 'stoel', 'scherm', 'toetsenbord', 'muis', 'tafel', 'desk',
+            'ruimte', 'kamer', 'zaal', 'locatie', 'plaats', 'kantoor',
+            'geluid', 'lawaai', 'stil', 'luid', 'herrie', 'ruis',
+            'temperatuur', 'warm', 'koud', 'airco', 'verwarming',
+            'licht', 'verlichting', 'lamp', 'donker', 'helder',
+            'toilet', 'wc', 'badkamer', 'keuken', 'koffie',
+            'printer', 'beamer', 'apparatuur', 'computer'
         }
         
-        # Belangrijke woorden
-        important_words = {
-            'niet', 'geen', 'slecht', 'goed', 'top', 'prima', 'uitstekend',
+        # Belangrijke woorden die we altijd behouden
+        keep_words = {
+            'vies', 'vuil', 'schoon', 'netjes', 'proper', 'smerig', 'stoffig',
+            'goed', 'slecht', 'top', 'prima', 'uitstekend', 'fantastisch',
             'probleem', 'storing', 'defect', 'kapot', 'werkt', 'functioneert',
-            'klein', 'groot', 'ruim', 'krap', 'beperkt',
-            'beter', 'slechter', 'piept', 'kraakt', 'rammelt',
-            'aangenaam', 'fijn', 'prettig', 'comfortabel', 'oncomfortabel'
+            'klein', 'groot', 'ruim', 'krap', 'beperkt', 'vol',
+            'fijn', 'prettig', 'comfortabel', 'oncomfortabel', 'aangenaam',
+            'snel', 'traag', 'langzaam', 'rap', 'vlot', 'minpunt', 'niks'
         }
         
-        # Contextafhankelijke woorden (alleen behouden als ze zinvol zijn in context)
-        context_words = {'minder', 'meer'}
+        # Woord vervangingen voor betere semantiek
+        word_replacements = {
+            'niks': 'slecht',
+            'stomme': 'slecht', 
+            'stomme': 'slecht',
+            'minpunt': 'probleem',
+            'helemaal': '',  # Remove filler word
+            'enige': '',     # Remove filler word
+            'af': 'weg',     # "af en toe weg" -> "weg"
+            'toe': '',       # Remove when paired with "af"
+            'viel': 'weg',   # "viel weg" -> "weg"
+            'trekt': 'werkt',  # "trekt niks" -> "werkt niet"
+            'soms': 'vaak'   # "soms weg" -> "vaak weg" for consistency
+        }
         
-        # Split op zinnen (punt, uitroepteken, vraagteken)
-        sentences = re.split(r'[.!?]+', text.lower())
-        key_points = []
+        # Preprocess text voor betere interpretatie
+        processed_text = text.lower()
         
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if not sentence or len(sentence) < 5:
-                continue
-            
-            # Split op 'en' en ',' om potentieel verschillende onderwerpen te scheiden
-            segments = re.split(r'\s+(?:en|,)\s+', sentence)
-            
-            for segment in segments:
-                segment = segment.strip()
-                if not segment:
-                    continue
-                
-                # Zoek onderwerp in segment
-                words = segment.split()
-                filtered_words = []
-                current_subject = None
-                
-                for i, word in enumerate(words):
-                    clean_word = word.strip('.,!?;:')
-                    
-                    # Detecteer onderwerp
-                    if clean_word in subject_words:
-                        current_subject = clean_word
-                        filtered_words.append(clean_word)
+        # Vervang specifieke zinsdelen die problematisch zijn
+        processed_text = re.sub(r'\btrekt\s+niks\b', 'werkt slecht', processed_text)
+        processed_text = re.sub(r'\baf\s+en?\s+toe\s+(weg\s+)?viel\b', 'wifi vaak weg', processed_text)  # Enhanced pattern
+        processed_text = re.sub(r'\benige\s+minpunt\b', 'probleem', processed_text)
+        processed_text = re.sub(r'\bhelemaal\s+(\w+)\s+stomme\b', r'\1 slecht', processed_text)
+        processed_text = re.sub(r'\bsoms\s+weg\b', 'wifi vaak weg', processed_text)
+        
+        # Split de tekst op 'en' EN komma's om potentieel verschillende onderwerpen te vinden
+        # Eerst split op komma's, dan elk deel op 'en'
+        comma_parts = re.split(r',\s*', processed_text)
+        bullet_points = []
+        
+        for comma_part in comma_parts:
+            # Split elk komma-deel verder op 'en'
+            en_parts = re.split(r'\s+en\s+', comma_part)
+            for part in en_parts:
+                # Splits op zinnen binnen elk deel
+                sentences = re.split(r'[.!?]+', part)
+                for sentence in sentences:
+                    sentence = sentence.strip()
+                    if not sentence or len(sentence) < 3:
                         continue
                     
-                    # Behoud belangrijke woorden
-                    if clean_word in important_words:
-                        filtered_words.append(clean_word)
-                        continue
+                    # Splits tekst in woorden, behoud interpunctie
+                    words = re.findall(r'\b\w+\b|[.!?]', sentence)
                     
-                    # Contextafhankelijke woorden: alleen behouden als volgend woord belangrijk is
-                    if clean_word in context_words:
-                        # Kijk naar volgend woord
-                        if i + 1 < len(words):
-                            next_word = words[i + 1].strip('.,!?;:')
-                            # Behoud alleen als volgend woord belangrijk of onderwerp is
-                            if next_word in important_words or next_word in subject_words or len(next_word) > 4:
-                                filtered_words.append(clean_word)
-                        continue
+                    # Filter woorden
+                    filtered_words = []
+                    current_subject = None
+                    i = 0
                     
-                    # Skip filler woorden
-                    if clean_word in filler_words:
-                        continue
+                    while i < len(words):
+                        word = words[i]
+                        
+                        # Skip interpunctie aan einde
+                        if not word.isalnum():
+                            i += 1
+                            continue
+                        
+                        # Apply word replacements
+                        if word in word_replacements:
+                            replacement = word_replacements[word]
+                            if replacement:  # Only add if not empty
+                                filtered_words.append(replacement)
+                            i += 1
+                            continue
+                        
+                        # Detecteer onderwerp
+                        if word in subject_words:
+                            current_subject = word
+                            filtered_words.append(word)
+                            i += 1
+                            continue
+                        
+                        # Behoud belangrijke woorden
+                        if word in keep_words:
+                            filtered_words.append(word)
+                            i += 1
+                            continue
+                        
+                        # Skip stopwoorden (inclusief 'en' die we apart behandelen)
+                        if word in stopwords:
+                            i += 1
+                            continue
+                        
+                        # Behoud alle andere woorden (inclusief korte woorden die belangrijk kunnen zijn)
+                        filtered_words.append(word)
+                        i += 1
                     
-                    # Behoud lange woorden
-                    if len(clean_word) > 3:
-                        filtered_words.append(clean_word)
-                
-                # Als er zinvolle woorden zijn, maak bullet point
-                if len(filtered_words) >= 2:
-                    clean_segment = ' '.join(filtered_words)
-                    # Kapitaliseer eerste letter
-                    clean_segment = clean_segment[0].upper() + clean_segment[1:] if clean_segment else ''
-                    if clean_segment and clean_segment not in key_points:
-                        key_points.append(clean_segment)
+                    # Clean up consecutive duplicates and empty strings
+                    cleaned_words = []
+                    for word in filtered_words:
+                        if word and (not cleaned_words or word != cleaned_words[-1]):
+                            cleaned_words.append(word)
+                    
+                    # Als er zinvolle woorden zijn, maak bullet point
+                    if len(cleaned_words) >= 1:
+                        clean_part = ' '.join(cleaned_words)
+                        # Kapitaliseer eerste letter
+                        clean_part = clean_part[0].upper() + clean_part[1:] if len(clean_part) > 1 else clean_part.upper()
+                        if clean_part and clean_part not in bullet_points:
+                            bullet_points.append(clean_part)
         
-        # Als er geen punten zijn, toon verkorte tekst
-        if not key_points:
-            return text[:100] + '...' if len(text) > 100 else text
+        # Als er geen bullet points zijn, geef eerste paar woorden terug
+        if not bullet_points:
+            first_words = text.split()[:3]
+            result = ' '.join(first_words)
+            # Verwijder stopwoorden uit fallback
+            result_words = [w for w in first_words if w.lower() not in stopwords]
+            if result_words:
+                result = ' '.join(result_words)
+                result = result[0].upper() + result[1:] if len(result) > 1 else result.upper()
+            return result
         
-        # Return met bullets
-        return '• ' + '<br>• '.join(key_points)
+        # Als er slechts 1 bullet point is, geen bullet symbol nodig
+        if len(bullet_points) == 1:
+            return bullet_points[0]
+        
+        # Voeg bullet points samen met echte bullet symbols
+        return '\n'.join(f'• {point}' for point in bullet_points)
     
     def analyze_feedback_batch(self, feedback_list: List[Dict]) -> Dict:
         """
@@ -531,6 +605,8 @@ class FeedbackTopicExtractor:
                 'tokens': tokens,
                 'text': text,
                 'scores': scores,
+                'is_reviewed': feedback.get('is_reviewed', False),
+                'created_at': feedback.get('created_at'),
                 'desk_number': feedback.get('desk_number'),
                 'building_name': feedback.get('building_name'),
                 'dienst_naam': feedback.get('dienst_naam')
@@ -562,17 +638,16 @@ class FeedbackTopicExtractor:
             # Key phrases
             key_phrases = self.extract_key_phrases(item['tokens'], tfidf, n=3)
             
-            # Urgentie score (voor interne sortering)
+            # Bereken basis score (som van alle sterren / maximum * 100)
+            basic_score = self.calculate_basic_score(item['scores'])
+            
+            # Urgentie score (voor uitgebreide analyse inclusief sentiment)
             urgency = self.calculate_urgency_score(sentiment, item['scores'], topics)
             
-            # Bereken display score (som van alle sterren / maximum * 100)
-            valid_scores = [s for s in item['scores'].values() if s is not None]
-            if valid_scores:
-                total_score = sum(valid_scores)
-                max_possible = len(valid_scores) * 5  # elk item max 5 sterren
-                display_score = (total_score / max_possible) * 100
-            else:
-                display_score = 0
+            # Controleer of er negatieve opmerkingen gedetecteerd zijn
+            # Dit gebeurt als de urgency significant hoger is dan verwacht op basis van alleen de cijfers
+            expected_urgency = 100 - basic_score
+            negative_comments_detected = urgency > (expected_urgency + 15)  # Threshold van 15 punten verschil
             
             # Tekst samenvatting
             summary = self.summarize_text(item['text'], max_length=150)
@@ -589,9 +664,13 @@ class FeedbackTopicExtractor:
                 'key_phrases': key_phrases,
                 'scores': item['scores'],
                 'urgency_score': urgency,
-                'display_score': display_score,
+                'basic_score': basic_score,
+                'display_score': basic_score,  # Show the basic numeric score
+                'negative_comments_detected': negative_comments_detected,
                 'summary': summary,
                 'full_text': item['text'],
+                'is_reviewed': item.get('is_reviewed', False),
+                'created_at': item.get('created_at'),
                 'desk_number': item.get('desk_number'),
                 'building_name': item.get('building_name'),
                 'dienst_naam': item.get('dienst_naam')
@@ -623,9 +702,10 @@ class FeedbackTopicExtractor:
         # Sorteer feedback op urgentie (hoogste eerst)
         sorted_feedback = sorted(analyzed_items, key=lambda x: x['urgency_score'], reverse=True)
         
-        # Splits in urgent (>60) en positief/normaal (<40)
-        urgent_feedback = [f for f in sorted_feedback if f['urgency_score'] > 60]
-        positive_feedback = [f for f in sorted_feedback if f['urgency_score'] < 40]
+        # Splits op basis van dezelfde criteria als urgency_distribution
+        # onvoldoende: urgency > 50, voldoende: urgency 25-50, uitstekend: urgency < 25
+        urgent_feedback = [f for f in sorted_feedback if f['urgency_score'] > 50]  # onvoldoende
+        positive_feedback = [f for f in sorted_feedback if f['urgency_score'] < 25]  # uitstekend
         
         return {
             'total_feedback': len(feedback_list),
@@ -780,18 +860,18 @@ class FeedbackTopicExtractor:
             Dictionary met counts per urgentie level
         """
         distribution = {
-            'onvoldoende': 0,  # 51-100
-            'voldoende': 0,    # 25-50
-            'uitstekend': 0    # 0-24
+            'onvoldoende': 0,  # urgency > 50 (scores < 50/100)
+            'voldoende': 0,    # urgency 25-50 (scores 50-75/100)
+            'uitstekend': 0    # urgency < 25 (scores ≥ 76/100)
         }
         
         for item in sorted_feedback:
             urgency = item.get('urgency_score', 0)
-            if urgency >= 51:
+            if urgency > 50:  # Hoge urgency = slechte feedback (< 50/100)
                 distribution['onvoldoende'] += 1
-            elif urgency >= 25:
+            elif urgency >= 25:  # Matige urgency = matige feedback (50-75/100)
                 distribution['voldoende'] += 1
-            else:
+            else:  # Lage urgency = goede feedback (≥ 76/100)
                 distribution['uitstekend'] += 1
         
         return distribution
@@ -843,6 +923,8 @@ def analyze_feedback_from_db(db_session, organization_id=None) -> Dict:
             'stilte_score': record.stilte_score,
             'algemene_score': record.algemene_score,
             'extra_opmerkingen': record.extra_opmerkingen,
+            'is_reviewed': record.is_reviewed,
+            'created_at': record.reservation.starttijd if record.reservation else None,  # Gebruik reservatie datum
             'desk_number': record.reservation.desk.desk_number,
             'building_name': building_name,
             'dienst_naam': record.reservation.desk.get_dienst()

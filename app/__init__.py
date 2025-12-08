@@ -36,18 +36,24 @@ def create_app():
         pass
 
     @app.context_processor
-    def inject_user():
-        """Maak user_obj beschikbaar in alle templates"""
+    def inject_user_and_logo():
+        """Maak user_obj en organization_logo beschikbaar in alle templates"""
         from flask import session
         if "user" not in session:
-            return dict(user_obj=None)
+            return dict(user_obj=None, organization_logo=None)
         
         try:
             from .models import User
             user_id = int(session.get("user"))
             user_obj = User.query.filter_by(user_id=user_id).first()
-            return dict(user_obj=user_obj)
+            
+            # Haal het organization logo op
+            organization_logo = None
+            if user_obj and user_obj.organization:
+                organization_logo = user_obj.organization.get_logo_path()
+            
+            return dict(user_obj=user_obj, organization_logo=organization_logo)
         except:
-            return dict(user_obj=None)
+            return dict(user_obj=None, organization_logo=None)
 
     return app

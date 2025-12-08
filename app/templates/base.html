@@ -3,7 +3,7 @@
 <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-        <title>{% block title %}Colruyt Reservaties{% endblock %}</title>
+        <title>{% block title %}{% if user_obj and user_obj.organization %}{{ user_obj.organization.bedrijf }} Reservaties{% else %}Reservatiesysteem{% endif %}{% endblock %}</title>
         <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
         <style>
             html { touch-action: manipulation; }
@@ -14,8 +14,16 @@
 <body>
     <header class="site-header">
         <div class="container header-inner">
-            <a class="logo" href="{{ url_for('home') if (user or user_display) else url_for('login') }}">
-                <img src="{{ url_for('static', filename='images/Logo_colruyt_group.png') }}" alt="Colruyt Group" style="height:40px" />
+            <a class="logo" href="{{ url_for('home') if (user or user_display) else url_for('login') }}" style="text-decoration: none;">
+                {% if user or user_display %}
+                    {% if organization_logo %}
+                        <img src="{{ url_for('static', filename=organization_logo) }}" alt="Organization Logo" />
+                    {% else %}
+                        <img src="{{ url_for('static', filename='images/Logo_colruyt_group.png') }}" alt="Colruyt Group" />
+                    {% endif %}
+                {% else %}
+                    <span style="font-size:18px;font-weight:600;color:var(--primary);text-decoration:none;">Reservatiesysteem</span>
+                {% endif %}
             </a>
             <nav class="nav">
                 {% if user or user_display %}

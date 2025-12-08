@@ -10,6 +10,7 @@ class Organization(db.Model):
     __tablename__ = "organization"
     organization_id = db.Column(db.Integer, primary_key=True)
     bedrijf = db.Column(db.String(200), nullable=False)  # Bedrijfsnaam
+    logo_filename = db.Column(db.String(100), default='Logo_colruyt_group.png')  # Logo bestandsnaam
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     is_active = db.Column(db.Boolean, default=True)
     
@@ -22,6 +23,10 @@ class Organization(db.Model):
 
     def __repr__(self):
         return f"<Organization {self.organization_id}: {self.bedrijf}>"
+    
+    def get_logo_path(self):
+        """Geef het volledige path voor het logo terug"""
+        return f"images/{self.logo_filename}" if self.logo_filename else "images/Logo_colruyt_group.png"
 
 
 class User(db.Model):

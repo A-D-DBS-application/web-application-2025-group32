@@ -2,7 +2,7 @@
 @media (max-width: 600px) {
   .container { padding: 0 8px; }
   .header-inner { flex-direction: column; align-items: flex-start; gap: 12px; }
-  .logo img { height: 36px; }
+  .logo img { height: 30px; }
   .nav { flex-direction: column; gap: 4px; width: 100%; }
   .nav a, .dropdown-btn { width: 100%; text-align: left; padding: 12px 10px; font-size: 16px; }
   .dropdown-content { min-width: 100%; left: 0; border-radius: 0 0 10px 10px; }
@@ -43,7 +43,7 @@ body{margin:0;font-family:'Segoe UI',Inter,Arial,Helvetica,sans-serif;background
 .container{max-width:1200px;margin:0 auto;padding:0 24px}
 .site-header{background:linear-gradient(135deg,rgba(255,98,0,0.04),transparent);padding-bottom:20px;border-bottom:1px solid var(--border)}
 .header-inner{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
-.logo img{height:48px;transition:opacity 0.2s}
+.logo img{height:40px;transition:opacity 0.2s}
 .logo img:hover{opacity:0.85}
 .nav{display:flex;gap:8px;align-items:center}
 .nav a{padding:10px 18px;color:var(--text);text-decoration:none;font-weight:600;font-size:15px;border-radius:8px;transition:all 0.2s}
@@ -95,6 +95,14 @@ tbody tr:hover{background:rgba(255,98,0,0.02)}
 .edit-btn-save{padding:10px 18px;background:#4caf50;font-size:0.95rem;white-space:nowrap;font-weight:600}
 .edit-btn-cancel{padding:10px 18px;background:#94a3b8;text-decoration:none;font-size:0.95rem;white-space:nowrap;font-weight:600}
 
+/* Negative comment indicator */
+.negative-indicator {
+  margin-left: 5px;
+  font-size: 0.9em;
+  color: #e74c3c;
+  cursor: help;
+}
+
 .btn-ghost:hover{background:rgba(255,98,0,0.06);border-color:var(--primary);color:var(--primary);box-shadow:none}
 .small{font-size:14px;color:var(--muted);line-height:1.5}
 .site-footer{padding:32px 0;text-align:center;color:var(--muted);border-top:1px solid var(--border);margin-top:48px;font-size:14px}
@@ -105,3 +113,11 @@ input,select,textarea{font-family:inherit;font-size:15px;padding:12px 14px;borde
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(255,98,0,0.1)}
 label{font-weight:600;color:var(--text);margin-bottom:6px;display:block}
 @media (max-width:900px){.header-inner{flex-direction:column;gap:14px}.nav{flex-wrap:wrap;justify-content:center}.nav a{margin:0}.home-welcome{flex-direction:column;align-items:flex-start}.logo img{height:40px}.container{padding:0 16px}}
+
+/* Negative comment indicator */
+.negative-indicator {
+  margin-left: 5px;
+  font-size: 0.9em;
+  color: #e74c3c;
+  cursor: help;
+}

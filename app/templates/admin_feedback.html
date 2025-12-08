@@ -85,6 +85,9 @@
                   {% if item.desk_number and item.building_name %}
                     <span class="desk-info">Bureau {{ item.desk_number }} - {{ item.building_name }}</span>
                   {% endif %}
+                  {% if item.negative_comments_detected %}
+                    <span class="negative-warning">Negatieve opmerkingen gedetecteerd</span>
+                  {% endif %}
                   {% if not item.get('is_reviewed') %}
                     <span class="badge-new">Nieuw</span>
                   {% endif %}
@@ -151,12 +154,12 @@
       <div class="section-header">
         <h2>Voldoende</h2>
         <span class="section-count">
-          {% set adequate_count = analysis.detailed_items|selectattr('urgency_score', '>=', 40)|selectattr('urgency_score', '<=', 60)|list|length %}
+          {% set adequate_count = analysis.detailed_items|selectattr('urgency_score', '>=', 25)|selectattr('urgency_score', '<=', 50)|list|length %}
           {{ adequate_count }} meldingen
         </span>
       </div>
 
-      {% set adequate_items = analysis.detailed_items|selectattr('urgency_score', '>=', 40)|selectattr('urgency_score', '<=', 60)|list %}
+      {% set adequate_items = analysis.detailed_items|selectattr('urgency_score', '>=', 25)|selectattr('urgency_score', '<=', 50)|list %}
       {% if adequate_items %}
         <div class="feedback-list">
           {% for item in adequate_items %}
@@ -176,6 +179,9 @@
                     <span class="feedback-id">#{{ item.feedback_id }}</span>
                     {% if item.desk_number and item.building_name %}
                       <span class="desk-info">Bureau {{ item.desk_number }} - {{ item.building_name }}</span>
+                    {% endif %}
+                    {% if item.negative_comments_detected %}
+                      <span class="negative-warning">Negatieve opmerkingen gedetecteerd</span>
                     {% endif %}
                     {% if not item.get('is_reviewed') %}
                       <span class="badge-new">Nieuw</span>
@@ -237,18 +243,18 @@
     </div>
   {% endif %}
 
-  <!-- Uitstekend Feedback Section (<40 urgency) -->
+  <!-- Uitstekend Feedback Section (<25 urgency) -->
   {% if analysis.detailed_items %}
     <div class="feedback-section" id="uitstekend-section">
       <div class="section-header">
         <h2>Uitstekend</h2>
         <span class="section-count">
-          {% set excellent_count = analysis.detailed_items|selectattr('urgency_score', '<', 40)|list|length %}
+          {% set excellent_count = analysis.detailed_items|selectattr('urgency_score', '<', 25)|list|length %}
           {{ excellent_count }} meldingen
         </span>
       </div>
 
-      {% set excellent_items = analysis.detailed_items|selectattr('urgency_score', '<', 40)|list %}
+      {% set excellent_items = analysis.detailed_items|selectattr('urgency_score', '<', 25)|list %}
       {% if excellent_items %}
         <div class="feedback-list">
           {% for item in excellent_items %}
@@ -268,6 +274,9 @@
                     <span class="feedback-id">#{{ item.feedback_id }}</span>
                     {% if item.desk_number and item.building_name %}
                       <span class="desk-info">Bureau {{ item.desk_number }} - {{ item.building_name }}</span>
+                    {% endif %}
+                    {% if item.negative_comments_detected %}
+                      <span class="negative-warning">Negatieve opmerkingen gedetecteerd</span>
                     {% endif %}
                     {% if not item.get('is_reviewed') %}
                       <span class="badge-new">Nieuw</span>
@@ -649,6 +658,18 @@
     font-weight: 600;
   }
 
+  .negative-warning {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    background-color: #fee2e2;
+    color: #dc2626;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+    border: 1px solid #fecaca;
+  }
+
   .feedback-actions {
     display: flex;
     align-items: center;
@@ -681,6 +702,7 @@
     font-size: 0.9rem;
     color: var(--color-text);
     line-height: 1.6;
+    white-space: pre-line; /* Preserveer newlines en toon ze als line breaks */
   }
 
   .feedback-scores {
