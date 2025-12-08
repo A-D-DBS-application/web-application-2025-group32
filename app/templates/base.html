@@ -71,7 +71,9 @@
 
     <footer class="site-footer">
         <div class="container">
-            <p>© Colruyt Group — Reservatie Systeem</p>
+            {% if user or user_display %}
+                <p>© {% if user_obj and user_obj.organization %}{{ user_obj.organization.bedrijf }}{% else %}Colruyt Group{% endif %} — Reservatie Systeem</p>
+            {% endif %}
         </div>
     </footer>
 
