@@ -75,7 +75,7 @@ def reserve():
         "floor": request.args.get("floor", ""),
         "date": request.args.get("date", ""),
         "start_time": request.args.get("start_time", ""),
-        "end_time": request.args.get("end_time", ""),
+        "end_time": request.args.get("end_time", "")
     }
 
     if request.method == "POST":
@@ -1245,3 +1245,80 @@ def api_desks():
         } for d in desks])
     except Exception:
         return jsonify([])
+
+# Personeelsbeheer: overzicht, toevoegen, wijzigen, verwijderen
+@main.route('/admin/personeelsbeheer')
+@require_admin
+def admin_personeelsbeheer():
+    user = get_current_user()
+    # Haal alle medewerkers op, gesorteerd op achternaam
+    medewerkers = User.query.order_by(User.user_last_name.asc()).all()
+    # Haal alle unieke diensten op
+    diensten_query = db.session.query(User.dienst).filter(User.dienst.isnot(None)).distinct().all()
+    diensten = sorted([d[0] for d in diensten_query if d[0]])
+    return render_template('admin_personeelsbeheer.html', user=user, medewerkers=medewerkers, diensten=diensten, is_admin=True)
+
+# Wijzig dienst van medewerker
+@main.route('/admin/medewerker/update/<int:user_id>', methods=['POST'])
+@require_admin
+def admin_update_medewerker(user_id):
+    user = User.query.filter_by(user_id=user_id).first()
+    if not user:
+        flash('Medewerker niet gevonden.', 'danger')
+        return redirect(url_for('main.admin_personeelsbeheer'))
+    nieuwe_dienst = request.form.get('dienst')
+    nieuwe_dienst_other = request.form.get('dienst_other', '').strip()
+    if nieuwe_dienst == 'other' and nieuwe_dienst_other:
+        user.dienst = nieuwe_dienst_other
+    elif nieuwe_dienst:
+        user.dienst = nieuwe_dienst
+    db.session.commit()
+    flash('Dienst succesvol gewijzigd.', 'success')
+    return redirect(url_for('main.admin_personeelsbeheer', _anchor=f'user-{user_id}'))
+
+# Verwijder medewerker
+@main.route('/admin/medewerker/delete/<int:user_id>', methods=['POST'])
+@require_admin
+def admin_delete_medewerker(user_id):
+    user = User.query.filter_by(user_id=user_id).first()
+    if not user:
+        flash('Medewerker niet gevonden.', 'danger')
+        return redirect(url_for('main.admin_personeelsbeheer'))
+    db.session.delete(user)
+    db.session.commit()
+    flash('Medewerker succesvol verwijderd.', 'success')
+    return redirect(url_for('main.admin_personeelsbeheer'))
+
+# Nieuwe medewerker toevoegen
+@main.route('/admin/medewerker/create', methods=['POST'])
+@require_admin
+def admin_create_medewerker():
+    try:
+        naam = request.form.get('user_name', '').strip()
+        achternaam = request.form.get('user_last_name', '').strip()
+        email = request.form.get('user_email', '').strip()
+        dienst = request.form.get('dienst')
+        dienst_other = request.form.get('dienst_other', '').strip()
+        if dienst == 'other' and dienst_other:
+            dienst_final = dienst_other
+        else:
+            dienst_final = dienst
+        if not naam or not achternaam or not email or not dienst_final:
+            flash('Vul alle velden in.', 'danger')
+            return redirect(url_for('main.admin_personeelsbeheer'))
+        
+        # Check if email already exists
+        existing_user = User.query.filter_by(user_email=email).first()
+        if existing_user:
+            flash(f'Een medewerker met email {email} bestaat al.', 'danger')
+            return redirect(url_for('main.admin_personeelsbeheer'))
+        
+        nieuwe_user = User(user_name=naam, user_last_name=achternaam, user_email=email, dienst=dienst_final)
+        db.session.add(nieuwe_user)
+        db.session.commit()
+        flash('Nieuwe medewerker succesvol toegevoegd.', 'success')
+        return redirect(url_for('main.admin_personeelsbeheer'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Fout bij het toevoegen van de medewerker: {str(e)}', 'danger')
+        return redirect(url_for('main.admin_personeelsbeheer'))

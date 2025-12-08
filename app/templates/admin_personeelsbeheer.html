@@ -1,0 +1,352 @@
+
+{% extends "base.html" %}
+
+{% block title %}Personeelsbeheer{% endblock %}
+
+{% block hero %}
+  <h1 style="margin:0;font-size:2.2rem">Personeelsbeheer</h1>
+  <p style="margin:8px 0 0 0;opacity:0.95">Beheer medewerkers en hun diensten</p>
+{% endblock %}
+
+{% block content %}
+<div class="container main-content bureaubeheer-content">
+  <style>
+    .bureaubeheer-content .card { margin-bottom: 24px; }
+    .metrics-grid, .insight-box, .feedback-section, .section-header { width: 100%; }
+    .table-container { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; table-layout: auto; }
+    th, td { font-size: 15px; padding: 12px 8px; vertical-align: middle; white-space: nowrap; }
+    .medewerker-row { border-bottom: 1px solid #e5e7eb; }
+    .edit-field-wrapper label { font-size: 0.85rem; color: #64748b; margin-bottom: 4px; font-weight: 500; }
+    .edit-input, .edit-select { width: 100%; font-size: 15px; padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb; margin-bottom: 4px; }
+    .btn, .edit-btn-save, .edit-btn-cancel { font-size: 15px; padding: 10px 16px; margin-bottom: 0; }
+    .dienst-badge { background: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .dienst-badge-none { background: #f3f4f6; color: #64748b; padding: 4px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    
+    @media (max-width: 1200px) {
+      .table-container { overflow-x: auto; }
+      th:nth-child(4), td:nth-child(4) { min-width: 200px; }
+      th, td { white-space: normal; word-wrap: break-word; }
+    }
+    
+    @media (max-width: 900px) {
+      .bureaubeheer-content { padding: 0 6px; }
+      .card { padding: 14px; }
+      th, td { font-size: 13px; padding: 8px 6px; vertical-align: top; }
+      .edit-field-wrapper label { font-size: 0.8rem; }
+      .btn, .edit-btn-save, .edit-btn-cancel { font-size: 14px; padding: 8px 10px; }
+      .edit-input, .edit-select { font-size: 13px; padding: 7px; }
+      .dienst-badge, .dienst-badge-none { font-size: 12px; padding: 3px 8px; }
+      
+      /* Mobile responsive table */
+      .table-container { overflow-x: auto; }
+      table { min-width: 800px; }
+      th:nth-child(1), td:nth-child(1) { min-width: 120px; }
+      th:nth-child(2), td:nth-child(2) { min-width: 120px; }
+      th:nth-child(3), td:nth-child(3) { min-width: 60px; }
+      th:nth-child(4), td:nth-child(4) { min-width: 200px; }
+      th:nth-child(5), td:nth-child(5) { min-width: 120px; }
+      th:nth-child(6), td:nth-child(6) { min-width: 160px; }
+    }
+  </style>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        {% if category == 'success' %}
+          <div style="background:#e8f5e9;border-left:4px solid #4caf50;padding:16px;margin-bottom:24px;border-radius:8px">
+            <p style="margin:0;color:#2e7d32">{{ msg }}</p>
+          </div>
+        {% else %}
+          <div style="background:#ffebee;border-left:4px solid #f44336;padding:16px;margin-bottom:24px;border-radius:8px">
+            <p style="margin:0;color:#c62828">{{ msg }}</p>
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                <h2 style="margin:0;font-size:1.5rem;color:var(--primary)">Alle Medewerkers</h2>
+                <div style="position:relative">
+                    <input type="text" id="searchMedewerker" placeholder="Zoek medewerker..." 
+                           style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:4px;font-size:14px;width:200px"
+                           autocomplete="off">
+                    <div id="searchDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 4px 4px;max-height:200px;overflow-y:auto;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div>
+                </div>
+            </div>
+            <button id="showAddForm" class="btn" style="padding:10px 20px;background:#4caf50;color:white;border:none;border-radius:10px;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;box-shadow:0 2px 8px rgba(76,175,80,0.2);transition:all 0.2s">+ Nieuwe medewerker toevoegen</button>
+        </div>
+        
+        <div id="addMedewerkerForm" style="display:none;background:#e8f5e9;border:2px solid #4caf50;padding:24px;margin-bottom:24px;border-radius:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h3 style="margin:0;color:#2e7d32;font-size:1.2rem">Nieuwe Medewerker Toevoegen</h3>
+                <button type="button" onclick="hideAddForm()" style="color:#2e7d32;text-decoration:none;font-weight:500;background:none;border:none;cursor:pointer;font-size:16px">✕ Annuleren</button>
+            </div>
+            
+            <form method="POST" action="{{ url_for('main.admin_create_medewerker') }}" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+                <div>
+                    <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Voornaam *</label>
+                    <input type="text" name="user_name" required placeholder="bijv. John"
+                           style="padding:8px;border:1px solid #4caf50;border-radius:6px;width:100%;font-size:0.9rem">
+                </div>
+                
+                <div>
+                    <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Achternaam *</label>
+                    <input type="text" name="user_last_name" required placeholder="bijv. Doe"
+                           style="padding:8px;border:1px solid #4caf50;border-radius:6px;width:100%;font-size:0.9rem">
+                </div>
+                
+                <div>
+                    <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">E-mail *</label>
+                    <input type="email" name="user_email" required placeholder="bijv. john.doe@company.com"
+                           style="padding:8px;border:1px solid #4caf50;border-radius:6px;width:100%;font-size:0.9rem">
+                </div>
+                
+                <div>
+                    <label style="display:block;font-size:0.85rem;color:#64748b;margin-bottom:4px;font-weight:500">Dienst *</label>
+                    <select name="dienst" id="dienst-new" onchange="toggleDienstOther(this)" required
+                            style="padding:8px 12px;border:1px solid #4caf50;border-radius:6px;font-size:0.9rem;width:100%;cursor:pointer;background:white">
+                        <option value="">-- Selecteer dienst --</option>
+                        {% for dienst in diensten %}
+                            <option value="{{ dienst }}">{{ dienst }}</option>
+                        {% endfor %}
+                        <option value="other">Nieuw...</option>
+                    </select>
+                    <input type="text" name="dienst_other" id="dienst-other-new" placeholder="Nieuwe dienst naam"
+                           style="padding:8px;border:1px solid #e5e7eb;border-radius:6px;width:100%;font-size:0.9rem;margin-top:8px;display:none">
+                </div>
+                
+                <div style="grid-column:1/-1;margin-top:8px">
+                    <button type="submit" class="btn" style="padding:10px 20px;background:#4caf50;color:white;border:none;border-radius:10px;cursor:pointer;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;box-shadow:0 2px 8px rgba(76,175,80,0.2);transition:all 0.2s;margin-right:12px">Medewerker Toevoegen</button>
+                    <button type="button" class="btn" style="padding:10px 20px;background:#6c757d;color:white;border:none;border-radius:10px;cursor:pointer;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;box-shadow:0 2px 8px rgba(108,117,125,0.2);transition:all 0.2s" onclick="hideAddForm()">Annuleren</button>
+                </div>
+            </form>
+        </div>
+
+        {% if medewerkers %}
+            <div class="table-container">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background:#f8f9fa;border-bottom:2px solid #e5e7eb">
+                            <th style="text-align:left;font-weight:600;color:#374151;padding:12px 8px">Achternaam</th>
+                            <th style="text-align:left;font-weight:600;color:#374151;padding:12px 8px">Voornaam</th>
+                            <th style="text-align:left;font-weight:600;color:#374151;padding:12px 8px">ID</th>
+                            <th style="text-align:left;font-weight:600;color:#374151;padding:12px 8px">E-mail</th>
+                            <th style="text-align:left;font-weight:600;color:#374151;padding:12px 8px">Dienst</th>
+                            <th style="text-align:center;font-weight:600;color:#374151;padding:12px 8px">Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medewerker in medewerkers %}
+                        <tr id="user-{{ medewerker.user_id }}" class="medewerker-row">
+                            <td style="padding:12px 8px;border-bottom:1px solid #e5e7eb">{{ medewerker.user_last_name }}</td>
+                            <td style="padding:12px 8px;border-bottom:1px solid #e5e7eb">{{ medewerker.user_name }}</td>
+                            <td style="padding:12px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:13px;color:#6b7280">{{ medewerker.user_id }}</td>
+                            <td style="padding:12px 8px;border-bottom:1px solid #e5e7eb;word-break:break-word">{{ medewerker.user_email }}</td>
+                            <td style="padding:12px 8px;border-bottom:1px solid #e5e7eb">
+                                <span id="dienst-label-{{ medewerker.user_id }}" class="{% if medewerker.dienst %}dienst-badge{% else %}dienst-badge-none{% endif %}">
+                                    {{ medewerker.dienst if medewerker.dienst else 'Geen dienst' }}
+                                </span>
+                                <div id="edit-dienst-form-{{ medewerker.user_id }}" style="display:none;">
+                                    <form id="edit-form-{{ medewerker.user_id }}" method="POST" action="{{ url_for('main.admin_update_medewerker', user_id=medewerker.user_id) }}">
+                                        <select name="dienst" class="edit-select" style="min-width:100px;max-width:180px;width:100%" onchange="toggleDienstOtherRow(this, '{{ medewerker.user_id }}')">
+                                            {% for dienst in diensten %}
+                                                <option value="{{ dienst }}" {% if medewerker.dienst == dienst %}selected{% endif %}>{{ dienst }}</option>
+                                            {% endfor %}
+                                            <option value="other">Nieuw...</option>
+                                        </select>
+                                        <input type="text" name="dienst_other" class="edit-input" placeholder="Nieuwe dienst" style="display:none;margin-top:4px;min-width:100px;max-width:180px;width:180px;padding:6px 8px;font-size:14px" />
+                                    </form>
+                                </div>
+                            </td>
+                            <td style="padding:12px 8px;border-bottom:1px solid #e5e7eb;text-align:center">
+                                <div id="normal-actions-{{ medewerker.user_id }}" style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap">
+                                    <button class="btn" style="background:#ff6200;color:white;padding:8px 16px;border:none;border-radius:10px;cursor:pointer;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;box-shadow:0 2px 8px rgba(255,98,0,0.2);transition:all 0.2s" onclick="showEditForm('{{ medewerker.user_id }}')">Wijzigen</button>
+                                    <form method="POST" action="{{ url_for('main.admin_delete_medewerker', user_id=medewerker.user_id) }}" onsubmit="return confirm('Weet je zeker dat je {{ medewerker.user_name }} {{ medewerker.user_last_name }} wilt verwijderen? Deze actie kan niet ongedaan gemaakt worden.');" style="margin:0;display:inline-block">
+                                        <button type="submit" class="btn" style="background:#f44336;color:white;padding:8px 16px;border:none;border-radius:10px;cursor:pointer;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;box-shadow:0 2px 8px rgba(244,67,54,0.2);transition:all 0.2s">Verwijder</button>
+                                    </form>
+                                </div>
+                                <div id="edit-actions-{{ medewerker.user_id }}" style="display:none;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap">
+                                    <button type="submit" form="edit-form-{{ medewerker.user_id }}" class="btn" style="background:#4caf50;color:white;padding:8px 16px;border:none;border-radius:10px;cursor:pointer;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;box-shadow:0 2px 8px rgba(76,175,80,0.2);transition:all 0.2s">Opslaan</button>
+                                    <button type="button" class="btn" style="background:#6c757d;color:white;padding:8px 16px;border:none;border-radius:10px;cursor:pointer;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;box-shadow:0 2px 8px rgba(108,117,125,0.2);transition:all 0.2s" onclick="hideEditForm('{{ medewerker.user_id }}')">Annuleren</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p style="text-align:center;color:#64748b;font-style:italic;padding:40px 20px">Geen medewerkers gevonden. Voeg de eerste medewerker toe met de knop hierboven.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Hidden data for JavaScript -->
+<div id="medewerkersData" style="display:none;">
+    {% for medewerker in medewerkers %}
+    <div data-id="{{ medewerker.user_id }}" data-firstname="{{ medewerker.user_name }}" data-lastname="{{ medewerker.user_last_name }}"></div>
+    {% endfor %}
+</div>
+
+<script>
+document.getElementById('showAddForm').onclick = function() {
+    var form = document.getElementById('addMedewerkerForm');
+    form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'block' : 'none';
+}
+
+function hideAddForm() {
+    document.getElementById('addMedewerkerForm').style.display = 'none';
+}
+
+function showEditForm(userId) {
+    document.getElementById('dienst-label-' + userId).style.display = 'none';
+    document.getElementById('edit-dienst-form-' + userId).style.display = 'block';
+    document.getElementById('normal-actions-' + userId).style.display = 'none';
+    document.getElementById('edit-actions-' + userId).style.display = 'flex';
+    
+    // Reset dropdown to original value and hide input field
+    var form = document.getElementById('edit-form-' + userId);
+    var select = form.querySelector('select[name="dienst"]');
+    var input = form.querySelector('input[name="dienst_other"]');
+    
+    // Reset to the original selected value (not "other")
+    var currentDienst = document.getElementById('dienst-label-' + userId).textContent.trim();
+    if (currentDienst === 'Geen dienst') {
+        select.value = '';
+    } else {
+        // Find the option that matches the current dienst
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].text === currentDienst) {
+                select.value = select.options[i].value;
+                break;
+            }
+        }
+    }
+    
+    // Hide the input field and clear it
+    input.style.display = 'none';
+    input.value = '';
+}
+
+function hideEditForm(userId) {
+    document.getElementById('dienst-label-' + userId).style.display = 'inline';
+    document.getElementById('edit-dienst-form-' + userId).style.display = 'none';
+    document.getElementById('normal-actions-' + userId).style.display = 'flex';
+    document.getElementById('edit-actions-' + userId).style.display = 'none';
+}
+
+function toggleDienstOther(select) {
+    var input = select.parentElement.querySelector('input[name="dienst_other"]');
+    if (select.value === 'other') {
+        input.style.display = 'block';
+        input.required = true;
+        input.focus();
+    } else {
+        input.style.display = 'none';
+        input.required = false;
+        input.value = '';
+    }
+}
+
+function toggleDienstOtherRow(select, userId) {
+    var row = document.getElementById('user-' + userId);
+    var input = row.querySelector('input[name="dienst_other"]');
+    if (select.value === 'other') {
+        input.style.display = 'block';
+        input.required = true;
+        input.focus();
+    } else {
+        input.style.display = 'none';
+        input.required = false;
+        input.value = '';
+    }
+}
+
+// Search functionality
+var searchInput = document.getElementById('searchMedewerker');
+var searchDropdown = document.getElementById('searchDropdown');
+
+// Get medewerkers data from hidden div
+function getMedewerkersFromDOM() {
+    var medewerkers = [];
+    var dataDiv = document.getElementById('medewerkersData');
+    var elements = dataDiv.querySelectorAll('[data-id]');
+    
+    elements.forEach(function(element) {
+        var firstName = element.getAttribute('data-firstname');
+        var lastName = element.getAttribute('data-lastname');
+        medewerkers.push({
+            id: element.getAttribute('data-id'),
+            firstName: firstName,
+            lastName: lastName,
+            fullName: lastName + ', ' + firstName
+        });
+    });
+    
+    return medewerkers;
+}
+
+searchInput.addEventListener('input', function() {
+    var query = this.value.toLowerCase().trim();
+    
+    if (query.length < 2) {
+        searchDropdown.style.display = 'none';
+        return;
+    }
+    
+    var medewerkers = getMedewerkersFromDOM();
+    var matches = medewerkers.filter(function(m) {
+        return m.firstName.toLowerCase().includes(query) || 
+               m.lastName.toLowerCase().includes(query) ||
+               m.fullName.toLowerCase().includes(query);
+    });
+    
+    if (matches.length > 0) {
+        var html = '';
+        matches.forEach(function(match) {
+            html += '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f3f4f6" ' +
+                    'onmouseover="this.style.background=\'#f8f9fa\'" ' +
+                    'onmouseout="this.style.background=\'white\'" ' +
+                    'onclick="scrollToMedewerker(\'' + match.id + '\')">' +
+                    match.fullName + '</div>';
+        });
+        searchDropdown.innerHTML = html;
+        searchDropdown.style.display = 'block';
+    } else {
+        searchDropdown.innerHTML = '<div style="padding:8px 12px;color:#64748b;font-style:italic">Geen medewerkers gevonden</div>';
+        searchDropdown.style.display = 'block';
+    }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+        searchDropdown.style.display = 'none';
+    }
+});
+
+function scrollToMedewerker(userId) {
+    searchDropdown.style.display = 'none';
+    var row = document.getElementById('user-' + userId);
+    if (row) {
+        // Clear search input
+        searchInput.value = '';
+        
+        // Scroll to the row and highlight it temporarily
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Highlight the row
+        var originalBg = row.style.backgroundColor;
+        row.style.backgroundColor = '#fff3cd';
+        row.style.transition = 'background-color 0.3s ease';
+        
+        setTimeout(function() {
+            row.style.backgroundColor = originalBg;
+        }, 2000);
+    }
+}
+</script>
+{% endblock %}

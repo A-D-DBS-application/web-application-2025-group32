@@ -13,7 +13,7 @@ class User(db.Model):
     user_last_name = db.Column(db.String(120))
     dienst = db.Column(db.String(200))  # Afdeling/dienst van de gebruiker
     user_email = db.Column(db.String(200))
-    role = db.Column(db.String(50), default='user')
+    role = db.Column(db.String(50), default='Medewerker')
     
     # Relaties
     reservations = db.relationship("Reservation", back_populates="user", lazy="dynamic", passive_deletes=True)
