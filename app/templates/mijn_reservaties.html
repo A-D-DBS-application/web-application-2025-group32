@@ -58,6 +58,7 @@
         <td style="border-top:none;padding-top:4px;">{{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
         <td style="border-top:none;padding-top:4px;">
           <div class="actions-cell" style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;">
+            <a href="{{ url_for('main.edit_reservation', res_id=r.res_id) }}" style="padding:8px 16px;font-size:0.9rem;background:#ff6200;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s;text-decoration:none;display:inline-block" onmouseover="this.style.background='#e55800'" onmouseout="this.style.background='#ff6200'"> Wijzigen</a>
             <form method="post" action="{{ url_for('main.cancel_reservation', res_id=r.res_id) }}" onsubmit="return confirm('Weet je zeker dat je deze reservatie wilt annuleren?');" style="display:inline">
               <button type="submit" style="padding:8px 16px;font-size:0.9rem;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">✕ Annuleer</button>
             </form>
@@ -75,6 +76,7 @@
         <td>{{ r.eindtijd.strftime('%H:%M') if r.eindtijd else '-' }}</td>
         <td>
           <div class="actions-cell" style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;">
+            <a href="{{ url_for('main.edit_reservation', res_id=r.res_id) }}" style="padding:8px 16px;font-size:0.9rem;background:#ff6200;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s;text-decoration:none;display:inline-block" onmouseover="this.style.background='#e55800'" onmouseout="this.style.background='#ff6200'">Wijzigen</a>
             <form method="post" action="{{ url_for('main.cancel_reservation', res_id=r.res_id) }}" onsubmit="return confirm('Weet je zeker dat je deze reservatie wilt annuleren?');" style="display:inline">
               <button type="submit" style="padding:8px 16px;font-size:0.9rem;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s" onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">✕ Annuleer</button>
             </form>

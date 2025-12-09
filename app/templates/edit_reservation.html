@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}Reservatie Wijzigen{% endblock %}
+
+{% block hero %}
+  <h1 style="margin:0;font-size:2.2rem">Reservatie Wijzigen</h1>
+  <p style="margin:8px 0 0 0;opacity:0.95">Pas je reservatie aan</p>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:800px;margin:0 auto;">
+  <h2 style="margin-bottom:24px;color:var(--primary)">Reservatie #{{ reservation.res_id }}</h2>
+  
+  <form method="post" action="{{ url_for('main.edit_reservation', res_id=reservation.res_id) }}">
+    <div style="margin-bottom:20px;">
+      <label for="desk_id" style="display:block;margin-bottom:8px;font-weight:500">Bureau:</label>
+      <select id="desk_id" name="desk_id" required style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1rem;">
+        {% for desk in desks %}
+          <option value="{{ desk.desk_id }}" {% if desk.desk_id == reservation.desk_id %}selected{% endif %}>
+            Bureau {{ desk.desk_number }} - 
+            {% if desk.building %}{{ desk.building.adress }} (Verdieping {{ desk.building.floor }}){% else %}Onbekend gebouw{% endif %}
+            {% if desk.dienst %} - {{ desk.dienst }}{% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label for="date" style="display:block;margin-bottom:8px;font-weight:500">Datum:</label>
+      <input type="date" 
+             id="date" 
+             name="date" 
+             value="{{ reservation.starttijd.strftime('%Y-%m-%d') }}"
+             required 
+             style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1rem;">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <div>
+        <label for="start_time" style="display:block;margin-bottom:8px;font-weight:500">Begintijd:</label>
+        <input type="time" 
+               id="start_time" 
+               name="start_time" 
+               value="{{ reservation.starttijd.strftime('%H:%M') }}"
+               required 
+               style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1rem;">
+      </div>
+      <div>
+        <label for="end_time" style="display:block;margin-bottom:8px;font-weight:500">Eindtijd:</label>
+        <input type="time" 
+               id="end_time" 
+               name="end_time" 
+               value="{{ reservation.eindtijd.strftime('%H:%M') }}"
+               required 
+               style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:1rem;">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:32px;">
+      <button type="submit" 
+              class="btn" 
+              style="flex:1;padding:12px 24px;font-size:1rem;background:var(--primary);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:500;transition:all 0.2s">
+         Wijzigingen Opslaan
+      </button>
+      <a href="{{ url_for('main.mijn_reservaties') }}" 
+         class="btn-secondary" 
+         style="flex:1;padding:12px 24px;font-size:1rem;text-align:center;text-decoration:none;border-radius:6px;transition:all 0.2s">
+        ← Terug
+      </a>
+    </div>
+  </form>
+</div>
+
+<style>
+  @media (max-width: 768px) {
+    .card {
+      padding: 16px;
+    }
+    
+    h2 {
+      font-size: 1.5rem;
+    }
+    
+    label {
+      font-size: 0.9rem;
+    }
+    
+    input, select {
+      font-size: 16px !important; /* Voorkom zoom op iOS */
+    }
+    
+    div[style*="grid-template-columns"] {
+      grid-template-columns: 1fr !important;
+    }
+    
+    div[style*="display:flex"] {
+      flex-direction: column;
+    }
+    
+    .btn, .btn-secondary {
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}

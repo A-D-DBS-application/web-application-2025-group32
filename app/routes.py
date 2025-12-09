@@ -513,6 +513,109 @@ def cancel_reservation(res_id):
     return redirect(url_for('main.mijn_reservaties'))
 
 
+@main.route('/mijn_reservaties/edit/<int:res_id>', methods=['GET', 'POST'])
+def edit_reservation(res_id):
+    """Sta gebruiker toe om hun eigen reservatie te wijzigen."""
+    user = get_current_user()
+    if not user:
+        flash("Gelieve eerst aan te melden om reservaties te beheren.")
+        return redirect(url_for('login', next=url_for('main.mijn_reservaties')))
+    
+    org_id = get_current_organization_id()
+
+    try:
+        reservation = Reservation.query.filter_by(
+            res_id=res_id,
+            organization_id=org_id
+        ).first()
+    except Exception:
+        reservation = None
+
+    if not reservation:
+        flash("Reservatie niet gevonden.")
+        return redirect(url_for('main.mijn_reservaties'))
+
+    # Only allow the owner to edit
+    if reservation.user_id != user.user_id:
+        flash("Je kunt alleen je eigen reservaties wijzigen.")
+        return redirect(url_for('main.mijn_reservaties'))
+
+    if request.method == 'POST':
+        from datetime import datetime, timedelta
+        
+        # Haal nieuwe waarden op
+        new_date = request.form.get('date')
+        new_start_time = request.form.get('start_time')
+        new_end_time = request.form.get('end_time')
+        new_desk_id = request.form.get('desk_id')
+
+        try:
+            # Parse nieuwe datum en tijden
+            date_obj = datetime.strptime(new_date, '%Y-%m-%d').date()
+            start_time_obj = datetime.strptime(new_start_time, '%H:%M').time()
+            end_time_obj = datetime.strptime(new_end_time, '%H:%M').time()
+            
+            new_starttijd = datetime.combine(date_obj, start_time_obj)
+            new_eindtijd = datetime.combine(date_obj, end_time_obj)
+            
+            # Validaties
+            now = datetime.now()
+            if new_starttijd < now:
+                flash("Je kunt geen reservatie in het verleden maken.")
+                return redirect(url_for('main.edit_reservation', res_id=res_id))
+            
+            if new_eindtijd <= new_starttijd:
+                flash("Eindtijd moet na begintijd liggen.")
+                return redirect(url_for('main.edit_reservation', res_id=res_id))
+            
+            # Check beschikbaarheid van het bureau op het nieuwe tijdstip
+            # Zoek overlappende reservaties (exclusief huidige reservatie)
+            overlapping = Reservation.query.filter(
+                Reservation.desk_id == int(new_desk_id),
+                Reservation.organization_id == org_id,
+                Reservation.res_id != res_id,  # Exclusief huidige reservatie
+                Reservation.starttijd < new_eindtijd,
+                Reservation.eindtijd > new_starttijd
+            ).first()
+            
+            if overlapping:
+                flash("Dit bureau is al gereserveerd op het gekozen tijdstip.")
+                return redirect(url_for('main.edit_reservation', res_id=res_id))
+            
+            # Update reservatie
+            reservation.desk_id = int(new_desk_id)
+            reservation.starttijd = new_starttijd
+            reservation.eindtijd = new_eindtijd
+            
+            db.session.commit()
+            flash("Reservatie succesvol gewijzigd.")
+            return redirect(url_for('main.mijn_reservaties'))
+            
+        except ValueError as e:
+            flash(f"Ongeldige datum of tijd: {str(e)}")
+            return redirect(url_for('main.edit_reservation', res_id=res_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Kon reservatie niet wijzigen: {str(e)}")
+            return redirect(url_for('main.edit_reservation', res_id=res_id))
+    
+    # GET request - toon formulier
+    try:
+        # Haal alle gebouwen en bureaus op voor deze organisatie
+        buildings = Building.query.filter_by(organization_id=org_id).order_by(Building.adress, Building.floor).all()
+        desks = Desk.query.filter_by(organization_id=org_id).order_by(Desk.desk_number).all()
+        
+        return render_template('edit_reservation.html',
+                             user=user,
+                             reservation=reservation,
+                             buildings=buildings,
+                             desks=desks,
+                             is_admin=user.is_admin() if hasattr(user, 'is_admin') else False)
+    except Exception as e:
+        flash(f"Fout bij laden van formulier: {str(e)}")
+        return redirect(url_for('main.mijn_reservaties'))
+
+
 @main.route('/feedback/<int:res_id>', methods=['GET', 'POST'])
 def feedback(res_id):
     """
