@@ -126,7 +126,7 @@ def home():
         upcoming = []
         completed = []
 
-    return render_template("home.html", user=display, user_display=display, user_obj=user_obj, upcoming=upcoming, completed=completed, is_admin=is_admin, notifications=[])
+    return render_template("home.html", user=display, user_display=display, user_obj=user_obj, upcoming=upcoming, completed=completed, is_admin=is_admin)
 
 @app.route("/logout")
 def logout():
