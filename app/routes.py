@@ -354,6 +354,17 @@ def desk_detail(desk_id):
                 flash("Gelieve eerst aan te melden om een reservatie te maken.")
                 return redirect(url_for("login"))
 
+            # Controleer of de gebruiker toegang heeft tot dit bureau
+            # (dienst validatie voor medewerkers)
+            if not user.is_admin():
+                user_dienst = user.dienst
+                if user_dienst and desk.dienst and desk.dienst != user_dienst:
+                    flash("Je kunt alleen bureaus van je eigen dienst reserveren.")
+                    return redirect(url_for("main.available",
+                                            date=date_str,
+                                            start_time=start_str,
+                                            end_time=end_str))
+
             # Maak reservatie aan
             try:
                 chosen_date = datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -568,6 +579,23 @@ def edit_reservation(res_id):
                 flash("Eindtijd moet na begintijd liggen.")
                 return redirect(url_for('main.edit_reservation', res_id=res_id))
             
+            # Controleer of de gebruiker toegang heeft tot het geselecteerde bureau
+            # (dienst validatie voor medewerkers)
+            if not user.is_admin():
+                selected_desk = Desk.query.filter_by(
+                    desk_id=int(new_desk_id),
+                    organization_id=org_id
+                ).first()
+                
+                if not selected_desk:
+                    flash("Geselecteerd bureau niet gevonden.")
+                    return redirect(url_for('main.edit_reservation', res_id=res_id))
+                
+                user_dienst = user.dienst
+                if user_dienst and selected_desk.dienst and selected_desk.dienst != user_dienst:
+                    flash("Je kunt alleen bureaus van je eigen dienst reserveren.")
+                    return redirect(url_for('main.edit_reservation', res_id=res_id))
+            
             # Check beschikbaarheid van het bureau op het nieuwe tijdstip
             # Zoek overlappende reservaties (exclusief huidige reservatie)
             overlapping = Reservation.query.filter(
@@ -601,9 +629,22 @@ def edit_reservation(res_id):
     
     # GET request - toon formulier
     try:
-        # Haal alle gebouwen en bureaus op voor deze organisatie
+        # Haal gebouwen en bureaus op voor deze organisatie
         buildings = Building.query.filter_by(organization_id=org_id).order_by(Building.adress, Building.floor).all()
-        desks = Desk.query.filter_by(organization_id=org_id).order_by(Desk.desk_number).all()
+        
+        # Filter bureaus op dienst: medewerkers zien alleen bureaus van hun eigen dienst
+        # Admins zien alle bureaus (van hun organisatie)
+        desk_query = Desk.query.filter_by(organization_id=org_id)
+        
+        if user and not user.is_admin():
+            # Haal dienst op van gebruiker
+            user_dienst = user.dienst
+            
+            if user_dienst:
+                # Filter alleen desks met deze dienst OF desks zonder dienst
+                desk_query = desk_query.filter((Desk.dienst == user_dienst) | (Desk.dienst == None))
+        
+        desks = desk_query.order_by(Desk.desk_number).all()
         
         return render_template('edit_reservation.html',
                              user=user,
@@ -1471,17 +1512,44 @@ def admin_create_reservation():
 def api_desks():
     """API endpoint om bureaus op te halen per gebouw"""
     building_id = request.args.get('building_id')
+    user = get_current_user()
+    org_id = get_current_organization_id()
     
-    if not building_id:
+    if not building_id or not user:
         return jsonify([])
     
     try:
-        desks = Desk.query.filter_by(building_id=building_id).all()
+        # Start met basis query: desk moet in het gevraagde gebouw zijn
+        desk_query = Desk.query.filter_by(building_id=building_id)
+        
+        # Organisatie filtering: controleer of het building tot de juiste organisatie behoort
+        # We doen dit via een subquery voor betere performance
+        valid_building = Building.query.filter_by(
+            building_id=building_id, 
+            organization_id=org_id
+        ).first()
+        
+        if not valid_building:
+            # Building bestaat niet of behoort niet tot de organisatie
+            return jsonify([])
+        
+        # Filter op dienst: medewerkers zien alleen bureaus van hun eigen dienst
+        # Admins zien alle bureaus
+        if not user.is_admin():
+            user_dienst = user.dienst
+            if user_dienst:
+                # Filter alleen desks met deze dienst OF desks zonder dienst
+                desk_query = desk_query.filter((Desk.dienst == user_dienst) | (Desk.dienst == None))
+        
+        desks = desk_query.all()
+        
         return jsonify([{
             'desk_id': d.desk_id,
             'desk_number': d.desk_number
         } for d in desks])
-    except Exception:
+    except Exception as e:
+        # Log the error for debugging but don't expose it to the client
+        print(f"API error in /api/desks: {e}")
         return jsonify([])
 
 # Personeelsbeheer: overzicht, toevoegen, wijzigen, verwijderen
