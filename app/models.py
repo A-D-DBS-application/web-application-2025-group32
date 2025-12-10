@@ -36,8 +36,8 @@ class User(db.Model):
     __tablename__ = "user"
     user_id = db.Column(db.Integer, primary_key=True)  # Unieke ID
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.organization_id"), nullable=False, default=1)
-    user_name = db.Column(db.String(120))
-    user_last_name = db.Column(db.String(120))
+    user_name = db.Column(db.String(100))
+    user_last_name = db.Column(db.String(100))
     dienst = db.Column(db.String(200))  # Afdeling/dienst van de gebruiker
     user_email = db.Column(db.String(200))
     role = db.Column(db.String(50), default='Medewerker')
@@ -86,8 +86,8 @@ class Desk(db.Model):
     desk_number = db.Column(db.Integer)  # Bureau nummer
     building_id = db.Column(db.Integer, db.ForeignKey("building.building_id"), nullable=False)
     dienst = db.Column(db.String(100))  # Afdeling/dienst - komt overeen met user.dienst
-    screen = db.Column(db.Text)  # Type scherm
-    chair = db.Column(db.Text)  # Type stoel
+    screen = db.Column(db.String(100))  # Type scherm
+    chair = db.Column(db.String(100))  # Type stoel
     
     # Relaties
     organization = db.relationship("Organization", back_populates="desks")
@@ -139,7 +139,7 @@ class Feedback(db.Model):
     ruimte_score = db.Column(db.SmallInteger)  # Ruimte score (1-5)
     stilte_score = db.Column(db.SmallInteger)  # Stilte score (1-5)
     algemene_score = db.Column(db.SmallInteger)  # Algemene score (1-5)
-    extra_opmerkingen = db.Column(db.Text)  # Extra opmerkingen
+    extra_opmerkingen = db.Column(db.String(1000))  # Extra opmerkingen
     is_reviewed = db.Column(db.Boolean, default=False)  # Of admin de feedback heeft bekeken
     reviewed_at = db.Column(db.DateTime, nullable=True)  # Wanneer bekeken
     
