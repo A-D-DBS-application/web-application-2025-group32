@@ -38,7 +38,7 @@
         <div>
           <label class="small" style="display:block;margin-bottom:10px;font-weight:600">Netheid</label>
           <div class="star-rating">
-            {% for i in range(1, 6) %}
+            {% for i in range(5, 0, -1) %}
             <input type="radio" name="netheid_score" value="{{ i }}" id="netheid{{ i }}" {% if existing_feedback and existing_feedback.netheid_score == i %}checked{% endif %} required />
             <label for="netheid{{ i }}">★</label>
             {% endfor %}
@@ -49,7 +49,7 @@
         <div>
           <label class="small" style="display:block;margin-bottom:10px;font-weight:600">WiFi Kwaliteit</label>
           <div class="star-rating">
-            {% for i in range(1, 6) %}
+            {% for i in range(5, 0, -1) %}
             <input type="radio" name="wifi_score" value="{{ i }}" id="wifi{{ i }}" {% if existing_feedback and existing_feedback.wifi_score == i %}checked{% endif %} required />
             <label for="wifi{{ i }}">★</label>
             {% endfor %}
@@ -60,7 +60,7 @@
         <div>
           <label class="small" style="display:block;margin-bottom:10px;font-weight:600">Ruimte</label>
           <div class="star-rating">
-            {% for i in range(1, 6) %}
+            {% for i in range(5, 0, -1) %}
             <input type="radio" name="ruimte_score" value="{{ i }}" id="ruimte{{ i }}" {% if existing_feedback and existing_feedback.ruimte_score == i %}checked{% endif %} required />
             <label for="ruimte{{ i }}">★</label>
             {% endfor %}
@@ -71,7 +71,7 @@
         <div>
           <label class="small" style="display:block;margin-bottom:10px;font-weight:600">Stilte</label>
           <div class="star-rating">
-            {% for i in range(1, 6) %}
+            {% for i in range(5, 0, -1) %}
             <input type="radio" name="stilte_score" value="{{ i }}" id="stilte{{ i }}" {% if existing_feedback and existing_feedback.stilte_score == i %}checked{% endif %} required />
             <label for="stilte{{ i }}">★</label>
             {% endfor %}
@@ -82,7 +82,7 @@
         <div>
           <label class="small" style="display:block;margin-bottom:10px;font-weight:600">Algemene Ervaring</label>
           <div class="star-rating">
-            {% for i in range(1, 6) %}
+            {% for i in range(5, 0, -1) %}
             <input type="radio" name="algemene_score" value="{{ i }}" id="algemeen{{ i }}" {% if existing_feedback and existing_feedback.algemene_score == i %}checked{% endif %} required />
             <label for="algemeen{{ i }}">★</label>
             {% endfor %}

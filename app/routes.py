@@ -709,13 +709,6 @@ def feedback(res_id):
                 flash("Alle scores moeten tussen 1 en 5 liggen.")
                 return redirect(url_for('main.feedback', res_id=res_id))
 
-            # Converteer naar omgekeerde schaal: (6 - sterren)
-            netheid = 6 - netheid
-            wifi = 6 - wifi
-            ruimte = 6 - ruimte
-            stilte = 6 - stilte
-            algemeen = 6 - algemeen
-
             if existing_feedback:
                 # Update bestaande feedback
                 existing_feedback.netheid_score = netheid
