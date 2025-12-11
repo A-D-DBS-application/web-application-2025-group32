@@ -989,6 +989,16 @@ def admin_update_desk(desk_id):
         
         # Update gebouw - check eerst of "Andere" is geselecteerd
         if new_building_id == 'other' and new_building_other:
+            # Check eerst of dit gebouw al bestaat in deze organisatie
+            existing_building = Building.query.filter_by(
+                adress=new_building_other,
+                organization_id=org_id
+            ).first()
+            
+            if existing_building:
+                flash(f"Gebouw '{new_building_other}' bestaat al in uw organisatie. Selecteer het uit de dropdown lijst.", "danger")
+                return redirect(url_for('main.admin_dashboard', edit=desk_id))
+            
             # Haal floor waarde op uit form
             floor_value = int(request.form.get('floor', 1))
             # Maak nieuw gebouw aan voor deze organisatie met opgegeven floor
@@ -1104,6 +1114,16 @@ def admin_create_desk():
         
         # Handle gebouw
         if new_building_id == 'other' and new_building_other:
+            # Check eerst of dit gebouw al bestaat in deze organisatie
+            existing_building = Building.query.filter_by(
+                adress=new_building_other,
+                organization_id=org_id
+            ).first()
+            
+            if existing_building:
+                flash(f"Gebouw '{new_building_other}' bestaat al in uw organisatie. Selecteer het uit de dropdown lijst.", "danger")
+                return redirect(url_for('main.admin_dashboard', add_new=1))
+            
             # Haal floor waarde op uit form
             floor_value = int(request.form.get('floor', 1))
             # Maak nieuw gebouw aan voor deze organisatie met opgegeven floor
