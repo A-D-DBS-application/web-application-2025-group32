@@ -1,0 +1,71 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.Feedback (
+  feedback_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  reservation_id bigint NOT NULL,
+  netheid_score smallint,
+  wifi_score smallint,
+  ruimte_score smallint,
+  stilte_score smallint,
+  algemene_score smallint,
+  extra_opmerkingen character varying,
+  is_reviewed boolean DEFAULT false,
+  reviewed_at timestamp without time zone,
+  organization_id integer NOT NULL DEFAULT 1,
+  CONSTRAINT Feedback_pkey PRIMARY KEY (feedback_id),
+  CONSTRAINT Feedback_reservation_id_fkey FOREIGN KEY (reservation_id) REFERENCES public.reservation(res_id),
+  CONSTRAINT Feedback_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
+);
+CREATE TABLE public.building (
+  building_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  adress character varying NOT NULL,
+  floor bigint,
+  organization_id integer NOT NULL DEFAULT 1,
+  CONSTRAINT building_pkey PRIMARY KEY (building_id),
+  CONSTRAINT building_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
+);
+CREATE TABLE public.desk (
+  desk_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  desk_number bigint NOT NULL,
+  building_id bigint,
+  dienst character varying,
+  screen character varying DEFAULT 'NULL'::text,
+  chair character varying,
+  organization_id integer NOT NULL DEFAULT 1,
+  CONSTRAINT desk_pkey PRIMARY KEY (desk_id),
+  CONSTRAINT Desk_building_id_fkey FOREIGN KEY (building_id) REFERENCES public.building(building_id),
+  CONSTRAINT desk_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
+);
+CREATE TABLE public.organization (
+  organization_id integer NOT NULL DEFAULT nextval('organization_organization_id_seq'::regclass),
+  bedrijf character varying NOT NULL,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  is_active boolean DEFAULT true,
+  logo_filename character varying DEFAULT 'Logo_colruyt_group.png'::character varying,
+  CONSTRAINT organization_pkey PRIMARY KEY (organization_id)
+);
+CREATE TABLE public.reservation (
+  res_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  starttijd timestamp with time zone NOT NULL,
+  eindtijd timestamp without time zone,
+  desk_id bigint,
+  user_id bigint,
+  modified_by_admin boolean DEFAULT false,
+  organization_id integer NOT NULL DEFAULT 1,
+  CONSTRAINT reservation_pkey PRIMARY KEY (res_id),
+  CONSTRAINT reservation_desk_id_fkey FOREIGN KEY (desk_id) REFERENCES public.desk(desk_id),
+  CONSTRAINT reservation_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user(user_id),
+  CONSTRAINT reservation_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
+);
+CREATE TABLE public.user (
+  user_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  user_name character varying NOT NULL,
+  user_last_name character varying,
+  dienst character varying,
+  user_email character varying,
+  role character varying,
+  organization_id integer NOT NULL DEFAULT 1,
+  CONSTRAINT user_pkey PRIMARY KEY (user_id),
+  CONSTRAINT user_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
+);
