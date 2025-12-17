@@ -148,6 +148,28 @@ def reserve():
                            is_admin=user.is_admin() if user and hasattr(user, 'is_admin') else False)
 
 
+@main.route("/api/floors/<adress>")
+def get_floors_for_address(adress):
+    """
+    API endpoint om verdiepingen op te halen voor een specifiek adres
+    """
+    org_id = get_current_organization_id()
+    
+    try:
+        from sqlalchemy import distinct
+        # Haal alle unieke verdiepingen op voor dit adres
+        floors = db.session.query(distinct(Building.floor)).filter(
+            Building.adress == adress,
+            Building.organization_id == org_id,
+            Building.floor.isnot(None)
+        ).order_by(Building.floor).all()
+        
+        floor_list = [f[0] for f in floors]
+        return jsonify({"floors": floor_list})
+    except Exception as e:
+        return jsonify({"floors": [], "error": str(e)}), 500
+
+
 @main.route("/reserve/available", methods=["GET", "POST"])
 def available():
     """

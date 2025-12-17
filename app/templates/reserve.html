@@ -13,9 +13,9 @@
     <form method="POST">
       <div style="display:grid;gap:20px">
         <div>
-          <label class="small">Gebouw (optioneel)</label>
-          <select name="building_id">
-            <option value="">-- Alle gebouwen --</option>
+          <label class="small">Gebouw</label>
+          <select name="building_id" id="building-select" required>
+            <option value="">-- Kies een gebouw --</option>
             {% for building in buildings %}
               <option value="{{ building.adress }}" {% if saved and saved.building_id|string == building.adress|string %}selected{% endif %}>{{ building.adress }}</option>
             {% endfor %}
@@ -23,11 +23,13 @@
         </div>
         <div>
           <label class="small">Verdieping (optioneel)</label>
-          <select name="floor">
-            <option value="">-- Alle verdiepingen --</option>
-            {% for f in floors %}
-              <option value="{{ f }}" {% if saved and saved.floor|string == f|string %}selected{% endif %}>Verdieping {{ f }}</option>
-            {% endfor %}
+          <select name="floor" id="floor-select" {% if not saved or not saved.building_id %}disabled{% endif %}>
+            <option value="">-- Kies eerst een gebouw --</option>
+            {% if saved and saved.building_id %}
+              {% for f in floors %}
+                <option value="{{ f }}" {% if saved and saved.floor|string == f|string %}selected{% endif %}>Verdieping {{ f }}</option>
+              {% endfor %}
+            {% endif %}
           </select>
         </div>
         <div>
@@ -51,4 +53,51 @@
     </form>
   </div>
 </div>
+
+<script>
+// Update floor dropdown wanneer building wordt geselecteerd
+const buildingSelect = document.getElementById('building-select');
+const floorSelect = document.getElementById('floor-select');
+
+buildingSelect.addEventListener('change', function() {
+  const adress = this.value;
+  
+  // Als geen gebouw geselecteerd, disable floor dropdown
+  if (!adress) {
+    floorSelect.disabled = true;
+    floorSelect.innerHTML = '<option value="">-- Kies eerst een gebouw --</option>';
+    return;
+  }
+  
+  // Haal verdiepingen op voor dit adres
+  fetch(`/api/floors/${encodeURIComponent(adress)}`)
+    .then(response => response.json())
+    .then(data => {
+      // Reset dropdown
+      floorSelect.innerHTML = '<option value="">-- Alle verdiepingen --</option>';
+      
+      // Voeg verdiepingen toe
+      if (data.floors && data.floors.length > 0) {
+        data.floors.forEach(floor => {
+          const option = document.createElement('option');
+          option.value = floor;
+          option.textContent = `Verdieping ${floor}`;
+          floorSelect.appendChild(option);
+        });
+        floorSelect.disabled = false;
+      } else {
+        floorSelect.disabled = true;
+      }
+    })
+    .catch(error => {
+      console.error('Fout bij ophalen verdiepingen:', error);
+      floorSelect.disabled = true;
+    });
+});
+
+// Trigger de change event als er al een gebouw geselecteerd is (bij page load)
+if (buildingSelect.value) {
+  buildingSelect.dispatchEvent(new Event('change'));
+}
+</script>
 {% endblock %}
