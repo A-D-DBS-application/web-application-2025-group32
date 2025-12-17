@@ -22,7 +22,7 @@
             <h3 style="color: var(--text); margin-bottom: 16px; font-size: 18px;">Huidige Reservatie</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div>
-                    <p style="color: #666; margin-bottom: 4px; font-size: 13px;">Gebruiker</p>
+                    <p style="color: #666; margin-bottom: 4px; font-size: 13px;">Medewerker</p>
                     <p style="color: var(--text); font-weight: 600;">{{ (reservation.user.user_name ~ ' ' ~ reservation.user.user_last_name)|replace('  ', ' ') }}</p>
                 </div>
                 <div>
@@ -56,13 +56,13 @@
         <form method="POST" id="editForm">
             <h3 style="color: var(--text); margin-bottom: 20px; font-size: 18px;">Nieuwe Gegevens</h3>
             
-            <!-- Gebruiker Selectie met Autocomplete -->
+            <!-- Medewerker Selectie met Autocomplete -->
             <div style="margin-bottom: 20px;">
-                <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Gebruiker *</label>
+                <label style="display: block; color: var(--text); font-weight: 600; margin-bottom: 8px;">Medewerker *</label>
                 <div style="position: relative;">
                     <input type="text" 
                            id="user_search" 
-                           placeholder="Zoek gebruiker door naam te typen..."
+                           placeholder="Zoek medewerker door naam te typen..."
                            value="{{ (reservation.user.user_name ~ ' ' ~ reservation.user.user_last_name)|replace('  ', ' ') }}"
                            autocomplete="off"
                            style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px; color: var(--text); background: white;">
@@ -74,7 +74,7 @@
                     </div>
                 </div>
                 <div id="user_error" style="color: #f44336; font-size: 13px; margin-top: 4px; display: none;">
-                    Geen gebruiker geselecteerd
+                    Geen medewerker geselecteerd
                 </div>
             </div>
             
@@ -175,7 +175,7 @@ buildingElements.forEach(function(el) {
     });
 });
 
-// ===== GEBRUIKER AUTOCOMPLETE FUNCTIONALITEIT =====
+// ===== MEDEWERKER AUTOCOMPLETE FUNCTIONALITEIT =====
 var userSearchInput = document.getElementById('user_search');
 var userDropdown = document.getElementById('user_dropdown');
 var selectedUserIdInput = document.getElementById('selected_user_id');
@@ -184,7 +184,7 @@ var searchTimeout;
 var currentUsers = [];
 var selectedUser = null; // Store selected user for dienst filtering
 
-// Zoek gebruikers
+// Zoek medewerkers
 function searchUsers(query) {
     if (query.length < 2) {
         hideUserDropdown();
@@ -198,12 +198,12 @@ function searchUsers(query) {
             showUserDropdown(users);
         })
         .catch(function(error) {
-            console.error('Fout bij zoeken gebruikers:', error);
+            console.error('Fout bij zoeken medewerkers:', error);
             hideUserDropdown();
         });
 }
 
-// Toon gebruiker dropdown
+// Toon medewerker dropdown
 function showUserDropdown(users) {
     userDropdown.innerHTML = '';
     userError.style.display = 'none';
@@ -211,7 +211,7 @@ function showUserDropdown(users) {
     if (users.length === 0) {
         var noResultDiv = document.createElement('div');
         noResultDiv.style.cssText = 'padding: 12px; color: #666; font-style: italic;';
-        noResultDiv.textContent = 'Geen gebruikers gevonden';
+        noResultDiv.textContent = 'Geen medewerkers gevonden';
         userDropdown.appendChild(noResultDiv);
     } else {
         users.forEach(function(user) {
@@ -233,12 +233,12 @@ function showUserDropdown(users) {
     userDropdown.style.display = 'block';
 }
 
-// Verberg gebruiker dropdown
+// Verberg medewerker dropdown
 function hideUserDropdown() {
     userDropdown.style.display = 'none';
 }
 
-// Selecteer gebruiker
+// Selecteer medewerker
 function selectUser(user) {
     // Extra spatie fix in frontend voor zekerheid
     var cleanName = user.name.trim().replace(/\s+/g, ' ');
@@ -253,7 +253,7 @@ function selectUser(user) {
     updateDeskOptions();
 }
 
-// Event listeners voor gebruiker zoeken
+// Event listeners voor medewerker zoeken
 userSearchInput.addEventListener('input', function() {
     var query = this.value.trim();
     selectedUserIdInput.value = '';
@@ -410,17 +410,17 @@ if (currentAddress) {
 
 // Confirmatie bij opslaan
 function confirmSave() {
-    // Valideer of gebruiker is geselecteerd
+    // Valideer of medewerker is geselecteerd
     var selectedUserId = selectedUserIdInput.value;
     if (!selectedUserId) {
-        userError.textContent = 'Geen gebruiker geselecteerd. Zoek en selecteer een gebruiker.';
+        userError.textContent = 'Geen medewerker geselecteerd. Zoek en selecteer een medewerker.';
         userError.style.display = 'block';
         userSearchInput.style.borderColor = '#f44336';
         userSearchInput.focus();
         return;
     }
 
-    if (confirm('Ben je zeker dat je deze wijzigingen wilt doorvoeren?\n\nDe gebruiker krijgt een notificatie over de wijziging.')) {
+    if (confirm('Ben je zeker dat je deze wijzigingen wilt doorvoeren?\n\nDe medewerker krijgt een notificatie over de wijziging.')) {
         document.getElementById('editForm').submit();
     }
 }
