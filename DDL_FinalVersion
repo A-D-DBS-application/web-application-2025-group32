@@ -14,8 +14,8 @@ CREATE TABLE public.Feedback (
   reviewed_at timestamp without time zone,
   organization_id integer NOT NULL DEFAULT 1,
   CONSTRAINT Feedback_pkey PRIMARY KEY (feedback_id),
-  CONSTRAINT Feedback_reservation_id_fkey FOREIGN KEY (reservation_id) REFERENCES public.reservation(res_id) ON DELETE CASCADE,
-  CONSTRAINT Feedback_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id) ON DELETE RESTRICT
+  CONSTRAINT Feedback_reservation_id_fkey FOREIGN KEY (reservation_id) REFERENCES public.reservation(res_id),
+  CONSTRAINT Feedback_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
 );
 CREATE TABLE public.building (
   building_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE public.building (
   organization_id integer NOT NULL DEFAULT 1,
   floor bigint,
   CONSTRAINT building_pkey PRIMARY KEY (building_id),
-  CONSTRAINT building_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id) ON DELETE RESTRICT
+  CONSTRAINT building_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
 );
 CREATE TABLE public.desk (
   desk_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -34,8 +34,8 @@ CREATE TABLE public.desk (
   chair character varying,
   organization_id integer NOT NULL DEFAULT 1,
   CONSTRAINT desk_pkey PRIMARY KEY (desk_id),
-  CONSTRAINT Desk_building_id_fkey FOREIGN KEY (building_id) REFERENCES public.building(building_id) ON DELETE CASCADE,
-  CONSTRAINT desk_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id) ON DELETE RESTRICT
+  CONSTRAINT Desk_building_id_fkey FOREIGN KEY (building_id) REFERENCES public.building(building_id),
+  CONSTRAINT desk_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
 );
 CREATE TABLE public.organization (
   organization_id integer NOT NULL DEFAULT nextval('organization_organization_id_seq'::regclass),
@@ -54,9 +54,9 @@ CREATE TABLE public.reservation (
   modified_by_admin boolean DEFAULT false,
   organization_id integer NOT NULL DEFAULT 1,
   CONSTRAINT reservation_pkey PRIMARY KEY (res_id),
-  CONSTRAINT reservation_desk_id_fkey FOREIGN KEY (desk_id) REFERENCES public.desk(desk_id) ON DELETE CASCADE,
-  CONSTRAINT reservation_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user(user_id) ON DELETE CASCADE,
-  CONSTRAINT reservation_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id) ON DELETE RESTRICT
+  CONSTRAINT reservation_desk_id_fkey FOREIGN KEY (desk_id) REFERENCES public.desk(desk_id),
+  CONSTRAINT reservation_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user(user_id),
+  CONSTRAINT reservation_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
 );
 CREATE TABLE public.user (
   user_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -67,5 +67,5 @@ CREATE TABLE public.user (
   role character varying,
   organization_id integer NOT NULL DEFAULT 1,
   CONSTRAINT user_pkey PRIMARY KEY (user_id),
-  CONSTRAINT user_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id) ON DELETE RESTRICT
+  CONSTRAINT user_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
 );
