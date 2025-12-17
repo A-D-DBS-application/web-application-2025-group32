@@ -14,7 +14,7 @@
       <div style="display:grid;gap:20px">
         <div>
           <label class="small">Gebouw</label>
-          <select name="building_id" id="building-select" required>
+          <select name="building_id" id="building-select">
             <option value="">-- Kies een gebouw --</option>
             {% for building in buildings %}
               <option value="{{ building.adress }}" {% if saved and saved.building_id|string == building.adress|string %}selected{% endif %}>{{ building.adress }}</option>
@@ -22,7 +22,7 @@
           </select>
         </div>
         <div>
-          <label class="small">Verdieping (optioneel)</label>
+          <label class="small">Verdieping</label>
           <select name="floor" id="floor-select" {% if not saved or not saved.building_id %}disabled{% endif %}>
             <option value="">-- Kies eerst een gebouw --</option>
             {% if saved and saved.building_id %}
@@ -59,6 +59,9 @@
 const buildingSelect = document.getElementById('building-select');
 const floorSelect = document.getElementById('floor-select');
 
+// Bewaar de geselecteerde verdieping (van saved data)
+const savedFloor = '{{ saved.floor if saved and saved.floor else "" }}';
+
 buildingSelect.addEventListener('change', function() {
   const adress = this.value;
   
@@ -82,6 +85,12 @@ buildingSelect.addEventListener('change', function() {
           const option = document.createElement('option');
           option.value = floor;
           option.textContent = `Verdieping ${floor}`;
+          
+          // Selecteer de opgeslagen verdieping
+          if (savedFloor && floor.toString() === savedFloor.toString()) {
+            option.selected = true;
+          }
+          
           floorSelect.appendChild(option);
         });
         floorSelect.disabled = false;
