@@ -23,26 +23,43 @@
             <div style="display:grid;gap:20px">
                 <div>
                     <label class="small">Gebruiker</label>
-                    <select name="user_id" required>
-                        <option value="">-- Selecteer gebruiker --</option>
-                        {% for u in all_users %}
-                            <option value="{{ u.user_id }}" {% if saved and saved.user_id|string == u.user_id|string %}selected{% endif %}>{{ u.user_name }} {{ u.user_last_name }} ({{ u.user_email }})</option>
+                    <div style="position: relative;">
+                        <input type="text" 
+                               id="user_search" 
+                               placeholder="Zoek gebruiker door naam te typen..."
+                               autocomplete="off"
+                               style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 15px;">
+                        <input type="hidden" name="user_id" id="selected_user_id" required>
+                        
+                        <!-- Dropdown voor zoekresultaten -->
+                        <div id="user_dropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none;">
+                            <!-- Zoekresultaten komen hier -->
+                        </div>
+                    </div>
+                    <div id="user_error" style="color: #f44336; font-size: 13px; margin-top: 4px; display: none;">
+                        Geen gebruiker geselecteerd
+                    </div>
+                </div>
+                <div>
+                    <label class="small">Gebouw</label>
+                    <select id="address_select" required>
+                        <option value="">-- Selecteer gebouw --</option>
+                        {% for b in buildings %}
+                            <option value="{{ b.adress }}" {% if saved and saved.building_adress == b.adress %}selected{% endif %}>{{ b.adress }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div>
-                    <label class="small">Gebouw</label>
-                    <select name="building_id" id="building_select" required>
-                        <option value="">-- Selecteer gebouw --</option>
-                        {% for b in buildings %}
-                            <option value="{{ b.building_id }}" {% if saved and saved.building_id|string == b.building_id|string %}selected{% endif %}>{{ b.adress }}</option>
-                        {% endfor %}
+                    <label class="small">Verdieping</label>
+                    <select id="floor_select" required>
+                        <option value="">-- Eerst gebouw selecteren --</option>
                     </select>
+                    <input type="hidden" name="building_id" id="building_id_hidden" value="{{ saved.building_id if saved else '' }}">
                 </div>
                 <div>
                     <label class="small">Bureau</label>
                     <select name="desk_id" id="desk_select" required>
-                        <option value="">-- Eerst gebouw selecteren --</option>
+                        <option value="">-- Eerst verdieping selecteren --</option>
                         {% if desks and saved and saved.desk_id %}
                             {% for desk in desks %}
                                 <option value="{{ desk.desk_id }}" {% if saved.desk_id|string == desk.desk_id|string %}selected{% endif %}>Bureau {{ desk.desk_number }}</option>
@@ -52,16 +69,16 @@
                 </div>
                 <div>
                     <label class="small">Datum</label>
-                      <input type="date" name="date" value="{{ saved.date if saved else '' }}" required>
+                      <input type="date" name="date" value="{{ saved.date if saved and saved.date else '' }}" required>
                 </div>
                 <div class="time-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
                     <div>
                         <label class="small">Begintijd</label>
-                        <input type="time" name="start_time" value="{{ saved.start_time if saved else '' }}" required />
+                        <input type="time" name="start_time" value="{{ saved.start_time if saved and saved.start_time else '' }}" required />
                     </div>
                     <div>
                         <label class="small">Eindtijd</label>
-                        <input type="time" name="end_time" value="{{ saved.end_time if saved else '' }}" required />
+                        <input type="time" name="end_time" value="{{ saved.end_time if saved and saved.end_time else '' }}" required />
                     </div>
                 </div>
                 <div style="text-align:center;margin-top:8px">
@@ -100,29 +117,268 @@
         </form>
     </div>
 </div>
+
+<!-- Hidden building data voor JavaScript -->
+<div id="building-data" style="display: none;">
+    {% for b in all_buildings %}
+        <div data-building-id="{{ b.building_id }}" data-address="{{ b.adress }}" data-floor="{{ b.floor }}"></div>
+    {% endfor %}
+</div>
+
 <script>
-        document.getElementById('building_select').addEventListener('change', function() {
-                const buildingId = this.value;
-                const deskSelect = document.getElementById('desk_select');
-                if (!buildingId) {
-                        deskSelect.innerHTML = '<option value="">-- Eerst gebouw selecteren --</option>';
-                        return;
-                }
-                fetch(`/api/desks?building_id=${buildingId}`)
-                        .then(res => res.json())
-                        .then(desks => {
-                                deskSelect.innerHTML = '<option value="">-- Selecteer bureau --</option>';
-                                desks.forEach(desk => {
-                                        const option = document.createElement('option');
-                                        option.value = desk.desk_id;
-                                        option.textContent = `Bureau ${desk.desk_number}`;
-                                        deskSelect.appendChild(option);
-                                });
-                        })
-                        .catch(err => {
-                                console.error('Error loading desks:', err);
-                                deskSelect.innerHTML = '<option value="">Fout bij laden bureaus</option>';
-                        });
+// ===== GEBRUIKER AUTOCOMPLETE FUNCTIONALITEIT =====
+var userSearchInput = document.getElementById('user_search');
+var userDropdown = document.getElementById('user_dropdown');
+var selectedUserIdInput = document.getElementById('selected_user_id');
+var userError = document.getElementById('user_error');
+var searchTimeout;
+var currentUsers = [];
+var selectedUser = null; // Store selected user for dienst filtering
+
+// Zoek gebruikers
+function searchUsers(query) {
+    if (query.length < 2) {
+        hideUserDropdown();
+        return;
+    }
+
+    fetch('/api/users?q=' + encodeURIComponent(query))
+        .then(function(response) { return response.json(); })
+        .then(function(users) {
+            currentUsers = users;
+            showUserDropdown(users);
+        })
+        .catch(function(error) {
+            console.error('Fout bij zoeken gebruikers:', error);
+            hideUserDropdown();
         });
+}
+
+// Toon gebruiker dropdown
+function showUserDropdown(users) {
+    userDropdown.innerHTML = '';
+    userError.style.display = 'none';
+
+    if (users.length === 0) {
+        var noResultDiv = document.createElement('div');
+        noResultDiv.style.cssText = 'padding: 12px; color: #666; font-style: italic;';
+        noResultDiv.textContent = 'Geen gebruikers gevonden';
+        userDropdown.appendChild(noResultDiv);
+    } else {
+        users.forEach(function(user) {
+            var userDiv = document.createElement('div');
+            userDiv.style.cssText = 'padding: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background-color 0.2s;';
+            userDiv.innerHTML = '<strong>' + user.name + '</strong><br><span style="color: #666; font-size: 13px;">' + user.email + (user.dienst ? ' • ' + user.dienst : '') + '</span>';
+            
+            userDiv.onmouseenter = function() { this.style.backgroundColor = '#f5f5f5'; };
+            userDiv.onmouseleave = function() { this.style.backgroundColor = 'white'; };
+            
+            userDiv.onclick = function() {
+                selectUser(user);
+            };
+            
+            userDropdown.appendChild(userDiv);
+        });
+    }
+
+    userDropdown.style.display = 'block';
+}
+
+// Verberg gebruiker dropdown
+function hideUserDropdown() {
+    userDropdown.style.display = 'none';
+}
+
+// Selecteer gebruiker
+function selectUser(user) {
+    // Extra spatie fix in frontend voor zekerheid
+    var cleanName = user.name.trim().replace(/\s+/g, ' ');
+    userSearchInput.value = cleanName;
+    selectedUserIdInput.value = user.user_id;
+    selectedUser = user; // Store for dienst filtering
+    hideUserDropdown();
+    userError.style.display = 'none';
+    userSearchInput.style.borderColor = '#4CAF50';
+    
+    // Update desk dropdown when user changes (filters by dienst)
+    updateDeskOptions();
+}
+
+// Event listeners voor gebruiker zoeken
+userSearchInput.addEventListener('input', function() {
+    var query = this.value.trim();
+    selectedUserIdInput.value = '';
+    selectedUser = null;
+    userError.style.display = 'none';
+    this.style.borderColor = '#e0e0e0';
+
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(function() {
+        searchUsers(query);
+    }, 300);
+});
+
+userSearchInput.addEventListener('focus', function() {
+    var query = this.value.trim();
+    if (query.length >= 2) {
+        searchUsers(query);
+    }
+});
+
+// Klik buiten dropdown om te sluiten
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('#user_search') && !event.target.closest('#user_dropdown')) {
+        hideUserDropdown();
+    }
+});
+
+// ===== BUILDING DATA SETUP =====
+var buildingDataDiv = document.getElementById('building-data');
+var buildingElements = buildingDataDiv.querySelectorAll('[data-building-id]');
+var buildings = [];
+buildingElements.forEach(function(el) {
+    buildings.push({
+        building_id: parseInt(el.getAttribute('data-building-id')),
+        adress: el.getAttribute('data-address'),
+        floor: parseInt(el.getAttribute('data-floor'))
+    });
+});
+
+// ===== GEBOUW/VERDIEPING/BUREAU CASCADING FUNCTIONALITEIT =====
+var addressSelect = document.getElementById('address_select');
+var floorSelect = document.getElementById('floor_select');
+var deskSelect = document.getElementById('desk_select');
+var buildingIdHidden = document.getElementById('building_id_hidden');
+
+// Wanneer gebouw wordt geselecteerd, toon verdiepingen
+addressSelect.addEventListener('change', function() {
+    var selectedAddress = this.value;
+    
+    floorSelect.innerHTML = '<option value="">-- Selecteer verdieping --</option>';
+    deskSelect.innerHTML = '<option value="">-- Eerst verdieping selecteren --</option>';
+    buildingIdHidden.value = '';
+    
+    if (!selectedAddress) {
+        floorSelect.innerHTML = '<option value="">-- Eerst gebouw selecteren --</option>';
+        return;
+    }
+    
+    // Gebruik API endpoint om alle verdiepingen voor dit adres op te halen
+    fetch('/api/floors/' + encodeURIComponent(selectedAddress))
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            floorSelect.innerHTML = '<option value="">-- Selecteer verdieping --</option>';
+            
+            if (data.floors && data.floors.length > 0) {
+                // Voor elke verdieping, zoek de bijbehorende building_id
+                data.floors.forEach(function(floor) {
+                    var building = buildings.find(function(b) { 
+                        return b.adress === selectedAddress && b.floor === floor; 
+                    });
+                    
+                    if (building) {
+                        var option = document.createElement('option');
+                        option.value = building.building_id;
+                        option.textContent = 'Verdieping ' + floor;
+                        floorSelect.appendChild(option);
+                    }
+                });
+            } else {
+                var option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Geen verdiepingen gevonden';
+                option.disabled = true;
+                floorSelect.appendChild(option);
+            }
+        })
+        .catch(function(error) {
+            console.error('Error loading floors:', error);
+            floorSelect.innerHTML = '<option value="">Fout bij laden verdiepingen</option>';
+        });
+});
+
+// Wanneer verdieping wordt geselecteerd, laad bureaus
+floorSelect.addEventListener('change', function() {
+    var buildingId = this.value;
+    
+    buildingIdHidden.value = buildingId;
+    
+    if (!buildingId) {
+        deskSelect.innerHTML = '<option value="">-- Eerst verdieping selecteren --</option>';
+        return;
+    }
+    
+    updateDeskOptions();
+});
+
+// Update desk options gebaseerd op building en user dienst
+function updateDeskOptions() {
+    var buildingId = buildingIdHidden.value;
+    
+    if (!buildingId) {
+        deskSelect.innerHTML = '<option value="">-- Eerst verdieping selecteren --</option>';
+        return;
+    }
+
+    deskSelect.innerHTML = '<option value="">Laden...</option>';
+    
+    fetch('/api/desks?building_id=' + buildingId + (selectedUser && selectedUser.dienst ? '&dienst=' + encodeURIComponent(selectedUser.dienst) : ''))
+        .then(function(res) { return res.json(); })
+        .then(function(desks) {
+            deskSelect.innerHTML = '<option value="">-- Selecteer bureau --</option>';
+            
+            if (desks.length === 0) {
+                var option = document.createElement('option');
+                option.value = '';
+                option.textContent = selectedUser && selectedUser.dienst 
+                    ? 'Geen bureaus beschikbaar voor dienst "' + selectedUser.dienst + '"'
+                    : 'Geen bureaus beschikbaar';
+                option.disabled = true;
+                deskSelect.appendChild(option);
+            } else {
+                desks.forEach(function(desk) {
+                    var option = document.createElement('option');
+                    option.value = desk.desk_id;
+                    option.textContent = 'Bureau ' + desk.desk_number;
+                    deskSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(function(err) {
+            console.error('Error loading desks:', err);
+            deskSelect.innerHTML = '<option value="">Fout bij laden bureaus</option>';
+        });
+}
+
+// Formulier validatie voor gebruiker
+document.querySelector('form').addEventListener('submit', function(e) {
+    var selectedUserId = selectedUserIdInput.value;
+    if (!selectedUserId) {
+        e.preventDefault();
+        userError.textContent = 'Geen gebruiker geselecteerd. Zoek en selecteer een gebruiker.';
+        userError.style.display = 'block';
+        userSearchInput.style.borderColor = '#f44336';
+        userSearchInput.focus();
+    }
+});
+
+// Load saved data op page load
+document.addEventListener('DOMContentLoaded', function() {
+    var savedAddress = '{{ saved.building_adress if saved and saved.building_adress else "" }}';
+    var savedBuildingId = '{{ saved.building_id if saved and saved.building_id else "" }}';
+    
+    if (savedAddress) {
+        addressSelect.value = savedAddress;
+        addressSelect.dispatchEvent(new Event('change'));
+        
+        // Wait for floors to load then trigger floor selection if we have saved building_id
+        setTimeout(function() {
+            if (savedBuildingId) {
+                floorSelect.value = savedBuildingId;
+                floorSelect.dispatchEvent(new Event('change'));
+            }
+        }, 500); // Longer timeout to allow API call to complete
+    }
+});
 </script>
 {% endblock %}

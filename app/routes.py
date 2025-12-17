@@ -1409,10 +1409,20 @@ def admin_edit_reservation(res_id):
     if request.method == 'POST':
         try:
             # Haal nieuwe waarden op
+            user_id = int(request.form.get('user_id'))  # Nieuwe gebruiker voor reservatie
             date_str = request.form.get('date')
             start_str = request.form.get('start_time')
             end_str = request.form.get('end_time')
             desk_id = int(request.form.get('desk_id'))
+            
+            # Valideer dat de nieuwe gebruiker bestaat in deze organisatie
+            target_user = User.query.filter_by(
+                user_id=user_id,
+                organization_id=org_id
+            ).first()
+            if not target_user:
+                flash("Geselecteerde gebruiker niet gevonden.")
+                return redirect(url_for('main.admin_edit_reservation', res_id=res_id))
             
             chosen_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             start_time_obj = datetime.strptime(start_str, "%H:%M").time()
@@ -1439,6 +1449,7 @@ def admin_edit_reservation(res_id):
                 return redirect(url_for('main.admin_edit_reservation', res_id=res_id))
             
             # Update reservatie
+            reservation.user_id = user_id  # Update gebruiker
             reservation.desk_id = desk_id
             reservation.starttijd = start_datetime
             reservation.eindtijd = end_datetime
@@ -1446,7 +1457,7 @@ def admin_edit_reservation(res_id):
             
             db.session.commit()
             
-            flash("Reservatie succesvol gewijzigd.")
+            flash(f"Reservatie succesvol gewijzigd en toegewezen aan {target_user.user_name} {target_user.user_last_name}.")
             return redirect(url_for('main.admin_reservations_overview'))
             
         except Exception as e:
@@ -1455,13 +1466,13 @@ def admin_edit_reservation(res_id):
             return redirect(url_for('main.admin_edit_reservation', res_id=res_id))
     
     # GET: toon formulier
-    buildings = Building.query.filter_by(organization_id=org_id).all()
+    all_buildings = Building.query.filter_by(organization_id=org_id).all()
     
     return render_template('admin_edit_reservation.html', 
                          user=user,
                          is_admin=True,
                          reservation=reservation,
-                         buildings=buildings)
+                         buildings=all_buildings)
 
 
 @main.route('/admin/reservation/create', methods=['GET', 'POST'])
@@ -1471,15 +1482,55 @@ def admin_create_reservation():
     user = get_current_user()
     org_id = get_current_organization_id()
     
-    # Haal alle users en buildings van deze organisatie op
+    # Haal alle users van deze organisatie op
     try:
         all_users = User.query.filter_by(organization_id=org_id).order_by(User.user_name).all()
-        all_buildings = Building.query.filter_by(organization_id=org_id).all()
     except Exception:
         all_users = []
+    
+    # Haal unique buildings (distinct by adress) voor deze organisatie op voor dropdown
+    try:
+        from sqlalchemy import distinct
+        unique_addresses = db.session.query(distinct(Building.adress)).filter(
+            Building.organization_id == org_id
+        ).order_by(Building.adress).all()
+        # Voor elke unieke adres, krijg één building object voor dropdown
+        buildings = [Building.query.filter_by(adress=addr[0], organization_id=org_id).first() 
+                    for addr in unique_addresses]
+        buildings = [b for b in buildings if b]  # Filter None values
+    except Exception:
+        buildings = []
+    
+    # Haal ALLE buildings op voor JavaScript (niet distinct)
+    try:
+        all_buildings = Building.query.filter_by(organization_id=org_id).all()
+    except Exception:
         all_buildings = []
     
     if request.method == 'POST':
+        # Bewaar ingevoerde form data voor het geval van errors
+        saved_data = {
+            'user_id': request.form.get('user_id'),
+            'building_id': request.form.get('building_id'),
+            'desk_id': request.form.get('desk_id'),
+            'date': request.form.get('date'),
+            'start_time': request.form.get('start_time'),
+            'end_time': request.form.get('end_time'),
+            'building_adress': None  # We need to lookup the building address
+        }
+        
+        # Lookup building address for saved data
+        if saved_data['building_id']:
+            try:
+                building = Building.query.filter_by(
+                    building_id=saved_data['building_id'],
+                    organization_id=org_id
+                ).first()
+                if building:
+                    saved_data['building_adress'] = building.adress
+            except Exception:
+                pass
+        
         try:
             selected_user_id = request.form.get('user_id')
             building_id = request.form.get('building_id')
@@ -1491,7 +1542,13 @@ def admin_create_reservation():
             # Validatie
             if not all([selected_user_id, desk_id, date_str, start_str, end_str]):
                 flash("Vul alle velden in.")
-                return redirect(url_for('main.admin_create_reservation'))
+                return render_template('admin_create_reservation.html', 
+                                     user=user,
+                                     is_admin=True,
+                                     all_users=all_users,
+                                     buildings=buildings,
+                                     all_buildings=all_buildings,
+                                     saved=saved_data)
             
             chosen_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             start_time_obj = datetime.strptime(start_str, "%H:%M").time()
@@ -1502,7 +1559,13 @@ def admin_create_reservation():
             
             if start_time_obj >= end_time_obj:
                 flash("Eindtijd moet later zijn dan starttijd.")
-                return redirect(url_for('main.admin_create_reservation'))
+                return render_template('admin_create_reservation.html', 
+                                     user=user,
+                                     is_admin=True,
+                                     all_users=all_users,
+                                     buildings=buildings,
+                                     all_buildings=all_buildings,
+                                     saved=saved_data)
             
             # Check overlap binnen organisatie
             overlapping = Reservation.query.filter(
@@ -1514,7 +1577,13 @@ def admin_create_reservation():
             
             if overlapping:
                 flash("Dit bureau is al geboekt in dit tijdslot!")
-                return redirect(url_for('main.admin_create_reservation'))
+                return render_template('admin_create_reservation.html', 
+                                     user=user,
+                                     is_admin=True,
+                                     all_users=all_users,
+                                     buildings=buildings,
+                                     all_buildings=all_buildings,
+                                     saved=saved_data)
             
             # Maak reservatie
             new_reservation = Reservation(
@@ -1533,20 +1602,28 @@ def admin_create_reservation():
         except Exception as e:
             db.session.rollback()
             flash(f"Fout bij aanmaken: {str(e)}")
-            return redirect(url_for('main.admin_create_reservation'))
+            return render_template('admin_create_reservation.html', 
+                                 user=user,
+                                 is_admin=True,
+                                 all_users=all_users,
+                                 buildings=buildings,
+                                 all_buildings=all_buildings,
+                                 saved=saved_data)
     
     # GET: toon formulier
     return render_template('admin_create_reservation.html', 
                          user=user,
                          is_admin=True,
                          all_users=all_users,
-                         buildings=all_buildings)
+                         buildings=buildings,
+                         all_buildings=all_buildings)
 
 
 @main.route('/api/desks')
 def api_desks():
     """API endpoint om bureaus op te halen per gebouw"""
     building_id = request.args.get('building_id')
+    dienst_filter = request.args.get('dienst')  # Nieuwe parameter voor admin dienst filtering
     user = get_current_user()
     org_id = get_current_organization_id()
     
@@ -1568,13 +1645,17 @@ def api_desks():
             # Building bestaat niet of behoort niet tot de organisatie
             return jsonify([])
         
-        # Filter op dienst: medewerkers zien alleen bureaus van hun eigen dienst
-        # Admins zien alle bureaus
-        if not user.is_admin():
+        # Filter op dienst
+        if user.is_admin() and dienst_filter:
+            # Admin met specifieke dienst filter (voor admin_create_reservation)
+            desk_query = desk_query.filter((Desk.dienst == dienst_filter) | (Desk.dienst == None))
+        elif not user.is_admin():
+            # Normale gebruiker: alleen eigen dienst
             user_dienst = user.dienst
             if user_dienst:
                 # Filter alleen desks met deze dienst OF desks zonder dienst
                 desk_query = desk_query.filter((Desk.dienst == user_dienst) | (Desk.dienst == None))
+        # Als admin zonder dienst_filter: toon alle desks
         
         desks = desk_query.all()
         
@@ -1586,6 +1667,38 @@ def api_desks():
         # Log the error for debugging but don't expose it to the client
         print(f"API error in /api/desks: {e}")
         return jsonify([])
+
+
+@main.route('/api/users')
+@require_admin
+def api_users():
+    """API endpoint om gebruikers te zoeken voor admin reservatie"""
+    query = request.args.get('q', '').strip()
+    user = get_current_user()
+    org_id = get_current_organization_id()
+    
+    if not query or len(query) < 2:
+        return jsonify([])
+    
+    try:
+        # Zoek gebruikers binnen de organisatie op naam, achternaam of email
+        users = User.query.filter(
+            User.organization_id == org_id,
+            (User.user_name.ilike(f'%{query}%')) |
+            (User.user_last_name.ilike(f'%{query}%')) |
+            (User.user_email.ilike(f'%{query}%'))
+        ).order_by(User.user_name, User.user_last_name).limit(10).all()
+        
+        return jsonify([{
+            'user_id': u.user_id,
+            'name': f"{u.user_name or ''} {u.user_last_name or ''}".strip().replace('  ', ' '),  # Fix spaties
+            'email': u.user_email,
+            'dienst': u.dienst or ''
+        } for u in users])
+    except Exception as e:
+        print(f"API error in /api/users: {e}")
+        return jsonify([])
+
 
 # Personeelsbeheer: overzicht, toevoegen, wijzigen, verwijderen
 @main.route('/admin/personeelsbeheer')
