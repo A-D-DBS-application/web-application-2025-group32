@@ -69,3 +69,43 @@ CREATE TABLE public.user (
   CONSTRAINT user_pkey PRIMARY KEY (user_id),
   CONSTRAINT user_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id)
 );
+CREATE TABLE public.analytics_stopwords (
+  stopword_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  word character varying(100) NOT NULL,
+  organization_id integer NOT NULL DEFAULT 1,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT analytics_stopwords_pkey PRIMARY KEY (stopword_id),
+  CONSTRAINT analytics_stopwords_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id),
+  CONSTRAINT analytics_stopwords_unique_word_org UNIQUE (word, organization_id)
+);
+CREATE TABLE public.analytics_sentiment_words (
+  sentiment_word_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  word character varying(100) NOT NULL,
+  sentiment_type character varying(10) NOT NULL,
+  organization_id integer NOT NULL DEFAULT 1,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT analytics_sentiment_words_pkey PRIMARY KEY (sentiment_word_id),
+  CONSTRAINT analytics_sentiment_words_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id),
+  CONSTRAINT analytics_sentiment_words_unique_word_type_org UNIQUE (word, sentiment_type, organization_id),
+  CONSTRAINT check_sentiment_type CHECK (sentiment_type IN ('positief', 'negatief'))
+);
+CREATE TABLE public.analytics_topic_categories (
+  topic_category_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  category_name character varying(100) NOT NULL,
+  organization_id integer NOT NULL DEFAULT 1,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT analytics_topic_categories_pkey PRIMARY KEY (topic_category_id),
+  CONSTRAINT analytics_topic_categories_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id),
+  CONSTRAINT analytics_topic_categories_unique_name_org UNIQUE (category_name, organization_id)
+);
+CREATE TABLE public.analytics_topic_keywords (
+  topic_keyword_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  topic_category_id bigint NOT NULL,
+  keyword character varying(100) NOT NULL,
+  organization_id integer NOT NULL DEFAULT 1,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT analytics_topic_keywords_pkey PRIMARY KEY (topic_keyword_id),
+  CONSTRAINT analytics_topic_keywords_category_id_fkey FOREIGN KEY (topic_category_id) REFERENCES public.analytics_topic_categories(topic_category_id),
+  CONSTRAINT analytics_topic_keywords_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organization(organization_id),
+  CONSTRAINT analytics_topic_keywords_unique_keyword_category_org UNIQUE (keyword, topic_category_id, organization_id)
+);
