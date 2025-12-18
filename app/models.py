@@ -149,3 +149,97 @@ class Feedback(db.Model):
 
     def __repr__(self):
         return f"<Feedback {self.feedback_id}>"
+
+
+# Analytics Models voor Dynamic Word Lists
+class AnalyticsStopword(db.Model):
+    """
+    Analytics Stopwords - Nederlandse stopwoorden voor feedback analyse
+    """
+    __tablename__ = "analytics_stopwords"
+    stopword_id = db.Column(db.BigInteger, primary_key=True)
+    word = db.Column(db.String(100), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey("organization.organization_id"), nullable=False, default=1)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
+    # Unique constraint per word per organization
+    __table_args__ = (
+        db.UniqueConstraint('word', 'organization_id', name='analytics_stopwords_unique_word_org'),
+    )
+    
+    # Relaties
+    organization = db.relationship("Organization")
+
+    def __repr__(self):
+        return f"<AnalyticsStopword {self.word}>"
+
+
+class AnalyticsSentimentWord(db.Model):
+    """
+    Analytics Sentiment Words - Positieve en negatieve woorden voor sentiment analyse
+    """
+    __tablename__ = "analytics_sentiment_words"
+    sentiment_word_id = db.Column(db.BigInteger, primary_key=True)
+    word = db.Column(db.String(100), nullable=False)
+    sentiment_type = db.Column(db.String(10), nullable=False)  # 'positief' of 'negatief'
+    organization_id = db.Column(db.Integer, db.ForeignKey("organization.organization_id"), nullable=False, default=1)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
+    # Check constraint for sentiment_type
+    __table_args__ = (
+        db.CheckConstraint("sentiment_type IN ('positief', 'negatief')", name='check_sentiment_type'),
+        db.UniqueConstraint('word', 'sentiment_type', 'organization_id', name='analytics_sentiment_words_unique_word_type_org'),
+    )
+    
+    # Relaties
+    organization = db.relationship("Organization")
+
+    def __repr__(self):
+        return f"<AnalyticsSentimentWord {self.word} ({self.sentiment_type})>"
+
+
+class AnalyticsTopicCategory(db.Model):
+    """
+    Analytics Topic Categories - Categorieën voor topic modeling (netheid, wifi, etc.)
+    """
+    __tablename__ = "analytics_topic_categories"
+    topic_category_id = db.Column(db.BigInteger, primary_key=True)
+    category_name = db.Column(db.String(100), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey("organization.organization_id"), nullable=False, default=1)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
+    # Unique constraint per category per organization
+    __table_args__ = (
+        db.UniqueConstraint('category_name', 'organization_id', name='analytics_topic_categories_unique_name_org'),
+    )
+    
+    # Relaties
+    organization = db.relationship("Organization")
+    keywords = db.relationship("AnalyticsTopicKeyword", back_populates="topic_category", lazy="dynamic")
+
+    def __repr__(self):
+        return f"<AnalyticsTopicCategory {self.category_name}>"
+
+
+class AnalyticsTopicKeyword(db.Model):
+    """
+    Analytics Topic Keywords - Keywords per topic categorie voor classificatie
+    """
+    __tablename__ = "analytics_topic_keywords"
+    topic_keyword_id = db.Column(db.BigInteger, primary_key=True)
+    topic_category_id = db.Column(db.BigInteger, db.ForeignKey("analytics_topic_categories.topic_category_id"), nullable=False)
+    keyword = db.Column(db.String(100), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey("organization.organization_id"), nullable=False, default=1)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
+    # Unique constraint per keyword per category per organization
+    __table_args__ = (
+        db.UniqueConstraint('keyword', 'topic_category_id', 'organization_id', name='analytics_topic_keywords_unique_keyword_category_org'),
+    )
+    
+    # Relaties
+    organization = db.relationship("Organization")
+    topic_category = db.relationship("AnalyticsTopicCategory", back_populates="keywords")
+
+    def __repr__(self):
+        return f"<AnalyticsTopicKeyword {self.keyword}>"

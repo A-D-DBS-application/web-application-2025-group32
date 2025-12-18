@@ -12,6 +12,10 @@ Gebruikte technieken:
 
 Het algoritme detecteert automatisch hoofdthema's in feedback en presenteert deze
 als samengevatte inzichten voor beheerders.
+
+Database-driven configuratie:
+- Stopwoorden, sentiment woorden en topic keywords worden opgehaald uit de database
+- Beheerders kunnen deze eenvoudig aanpassen zonder code wijzigingen
 """
 
 import re
@@ -31,59 +35,101 @@ class FeedbackTopicExtractor:
     3. LDA-achtige topic modeling voor thema detectie
     4. Sentiment analyse gebaseerd op scores en tekst
     5. Clustering van gerelateerde feedback items
+    
+    Database-driven configuratie:
+    - Alle woorden worden dynamisch opgehaald uit de database
+    - Per organisatie kunnen verschillende woordenlijsten worden gebruikt
     """
     
-    # Nederlandse stopwoorden (uitgebreide lijst)
-    DUTCH_STOPWORDS = {
-        'de', 'het', 'een', 'en', 'van', 'in', 'op', 'te', 'voor', 'met', 
-        'is', 'zijn', 'was', 'er', 'maar', 'om', 'aan', 'dat', 'die', 'dit',
-        'als', 'bij', 'dan', 'een', 'heeft', 'hem', 'het', 'hier', 'hun',
-        'ik', 'je', 'kan', 'meer', 'mijn', 'niet', 'nog', 'nu', 'ook', 'of',
-        'over', 'onder', 'uit', 'van', 'voor', 'want', 'waren', 'wat', 'werd',
-        'wie', 'wordt', 'zeer', 'zich', 'zo', 'zonder', 'naar', 'door', 'moet',
-        'kunnen', 'hebben', 'had', 'ben', 'bent', 'deze', 'geen', 'geweest',
-        'haar', 'heel', 'hun', 'iets', 'iemand', 'kon', 'kunnen', 'mag',
-        'veel', 'wel', 'werd', 'worden', 'zal', 'zelf', 'zijn', 'zo', 'zou'
-    }
-    
-    # Sentiment lexicon (basis Nederlandse woorden)
-    POSITIVE_WORDS = {
-        'goed', 'geweldig', 'uitstekend', 'prima', 'mooi', 'schoon', 'fijn',
-        'prettig', 'comfortabel', 'ruim', 'stil', 'rustig', 'tevreden', 'perfect',
-        'excellent', 'aangenaam', 'handig', 'snel', 'helder', 'netjes', 'proper'
-    }
-    
-    NEGATIVE_WORDS = {
-        'slecht', 'vies', 'vuil', 'lawaai', 'luidruchtig', 'klein', 'krap',
-        'vervelend', 'irritant', 'traag', 'gebrekkig', 'kapot', 'defect',
-        'oncomfortabel', 'onhandig', 'onprettig', 'teleurstellend', 'zwak',
-        'rommelig', 'smerig', 'stoffig', 'koud', 'warm'
-    }
-    
-    # Thema-specifieke keywords voor categorisatie
-    TOPIC_KEYWORDS = {
-        'netheid': ['schoon', 'vuil', 'vies', 'netjes', 'proper', 'smerig', 'rommelig', 'stoffig'],
-        'wifi': ['wifi', 'internet', 'verbinding', 'netwerk', 'langzaam', 'snel', 'connectie'],
-        'ruimte': ['ruimte', 'ruim', 'krap', 'klein', 'groot', 'plek', 'plaats', 'vol'],
-        'geluid': ['stil', 'lawaai', 'geluid', 'rustig', 'luidruchtig', 'herrie', 'geluidsoverlast'],
-        'comfort': ['comfortabel', 'stoel', 'bureau', 'ergonomisch', 'zit', 'rug', 'pijn'],
-        'faciliteiten': ['koffie', 'toilet', 'printer', 'beamer', 'apparatuur', 'voorzieningen'],
-        'temperatuur': ['warm', 'koud', 'temperatuur', 'airco', 'verwarming', 'tocht'],
-        'locatie': ['locatie', 'bereikbaar', 'parkeren', 'afstand', 'centraal', 'ligging']
-    }
-    
-    def __init__(self, min_word_freq: int = 2, num_topics: int = 5):
+    def __init__(self, min_word_freq: int = 2, num_topics: int = 5, organization_id: int = 1):
         """
         Initialiseer de topic extractor.
         
         Args:
             min_word_freq: Minimale frequentie voor woorden om mee te nemen
             num_topics: Aantal topics om te detecteren
+            organization_id: ID van de organisatie voor database lookup
         """
         self.min_word_freq = min_word_freq
         self.num_topics = num_topics
+        self.organization_id = organization_id
         self.vocabulary = {}
         self.idf_scores = {}
+        
+        # Cache voor database woorden (wordt bij eerste gebruik geladen)
+        self._stopwords_cache = None
+        self._positive_words_cache = None
+        self._negative_words_cache = None
+        self._topic_keywords_cache = None
+    
+    def _load_stopwords(self):
+        """Laad stopwoorden uit database"""
+        if self._stopwords_cache is None:
+            from app.models import AnalyticsStopword
+            stopwords = AnalyticsStopword.query.filter_by(
+                organization_id=self.organization_id
+            ).all()
+            self._stopwords_cache = {sw.word for sw in stopwords}
+        return self._stopwords_cache
+    
+    def _load_sentiment_words(self):
+        """Laad positieve en negatieve woorden uit database"""
+        if self._positive_words_cache is None or self._negative_words_cache is None:
+            from app.models import AnalyticsSentimentWord
+            sentiment_words = AnalyticsSentimentWord.query.filter_by(
+                organization_id=self.organization_id
+            ).all()
+            
+            self._positive_words_cache = {sw.word for sw in sentiment_words if sw.sentiment_type == 'positief'}
+            self._negative_words_cache = {sw.word for sw in sentiment_words if sw.sentiment_type == 'negatief'}
+        
+        return self._positive_words_cache, self._negative_words_cache
+    
+    def _load_topic_keywords(self):
+        """Laad topic keywords uit database"""
+        if self._topic_keywords_cache is None:
+            from app.models import AnalyticsTopicCategory, AnalyticsTopicKeyword
+            
+            # Laad alle categorieën voor deze organisatie
+            categories = AnalyticsTopicCategory.query.filter_by(
+                organization_id=self.organization_id
+            ).all()
+            
+            self._topic_keywords_cache = {}
+            for category in categories:
+                # Laad keywords voor elke categorie apart
+                keywords = AnalyticsTopicKeyword.query.filter_by(
+                    topic_category_id=category.topic_category_id,
+                    organization_id=self.organization_id
+                ).all()
+                
+                keyword_list = [kw.keyword for kw in keywords]
+                if keyword_list:  # Alleen categorieën met keywords
+                    self._topic_keywords_cache[category.category_name] = keyword_list
+        
+        return self._topic_keywords_cache
+    
+    @property
+    def DUTCH_STOPWORDS(self):
+        """Property voor stopwoorden vanuit database"""
+        return self._load_stopwords()
+    
+    @property
+    def POSITIVE_WORDS(self):
+        """Property voor positieve woorden vanuit database"""
+        positive_words, _ = self._load_sentiment_words()
+        return positive_words
+    
+    @property
+    def NEGATIVE_WORDS(self):
+        """Property voor negatieve woorden vanuit database"""
+        _, negative_words = self._load_sentiment_words()
+        return negative_words
+    
+    @property
+    def TOPIC_KEYWORDS(self):
+        """Property voor topic keywords vanuit database"""
+        return self._load_topic_keywords()
         
     def preprocess_text(self, text: str) -> List[str]:
         """
@@ -397,43 +443,19 @@ class FeedbackTopicExtractor:
         if not text:
             return ""
         
-        # Nederlandse stopwoorden die we willen verwijderen
-        stopwords = {
-            'de', 'het', 'een', 'en', 'van', 'in', 'op', 'te', 'voor', 'met', 
-            'is', 'zijn', 'was', 'er', 'maar', 'om', 'aan', 'dat', 'die', 'dit',
-            'als', 'bij', 'dan', 'heeft', 'hem', 'hier', 'hun', 'ik', 'je', 
-            'kan', 'meer', 'mijn', 'nog', 'nu', 'ook', 'of', 'over', 
-            'onder', 'uit', 'voor', 'want', 'waren', 'wat', 'werd', 'wie', 
-            'wordt', 'zeer', 'zich', 'zo', 'zonder', 'naar', 'door', 'moet',
-            'hebben', 'had', 'ben', 'bent', 'deze', 'geen', 'geweest', 'haar', 
-            'heel', 'iets', 'iemand', 'kon', 'kunnen', 'mag', 'veel', 'wel', 
-            'zal', 'zelf', 'zou', 'altijd', 'alleen', 'andere', 'beide',
-            'dus', 'echter', 'eerst', 'eigenlijk', 'erg', 'gewoon',
-            'hoe', 'juist', 'meestal', 'misschien', 'omdat', 'vaak', 'vooral',
-            'waar', 'waarom', 'weinig', 'wel', 'zoals'
-        }
+        # Gebruik stopwoorden uit database
+        stopwords = self.DUTCH_STOPWORDS
         
-        # Onderwerp woorden (voor het detecteren van verschillende onderwerpen)
-        subject_words = {
-            'wifi', 'internet', 'verbinding', 'netwerk',
-            'bureau', 'stoel', 'scherm', 'toetsenbord', 'muis', 'tafel', 'desk',
-            'ruimte', 'kamer', 'zaal', 'locatie', 'plaats', 'kantoor',
-            'geluid', 'lawaai', 'stil', 'luid', 'herrie', 'ruis',
-            'temperatuur', 'warm', 'koud', 'airco', 'verwarming',
-            'licht', 'verlichting', 'lamp', 'donker', 'helder',
-            'toilet', 'wc', 'badkamer', 'keuken', 'koffie',
-            'printer', 'beamer', 'apparatuur', 'computer'
-        }
+        # Onderwerp woorden (topic keywords uit database)
+        topic_keywords = self.TOPIC_KEYWORDS
+        subject_words = set()
+        for keywords in topic_keywords.values():
+            subject_words.update(keywords)
         
-        # Belangrijke woorden die we altijd behouden
-        keep_words = {
-            'vies', 'vuil', 'schoon', 'netjes', 'proper', 'smerig', 'stoffig',
-            'goed', 'slecht', 'top', 'prima', 'uitstekend', 'fantastisch',
-            'probleem', 'storing', 'defect', 'kapot', 'werkt', 'functioneert',
-            'klein', 'groot', 'ruim', 'krap', 'beperkt', 'vol',
-            'fijn', 'prettig', 'comfortabel', 'oncomfortabel', 'aangenaam',
-            'snel', 'traag', 'langzaam', 'rap', 'vlot', 'minpunt', 'niks'
-        }
+        # Sentiment woorden uit database
+        positive_words = self.POSITIVE_WORDS
+        negative_words = self.NEGATIVE_WORDS
+        keep_words = positive_words | negative_words
         
         # Woord vervangingen voor betere semantiek
         word_replacements = {
@@ -931,7 +953,7 @@ def analyze_feedback_from_db(db_session, organization_id=None) -> Dict:
         })
     
     # Analyseer
-    extractor = FeedbackTopicExtractor(min_word_freq=1, num_topics=5)
+    extractor = FeedbackTopicExtractor(min_word_freq=1, num_topics=5, organization_id=organization_id or 1)
     results = extractor.analyze_feedback_batch(feedback_list)
     
     return results
