@@ -29,7 +29,7 @@ python run.py
 - **Kanban Board**: [View on Miro](https://miro.com/app/board/uXjVJwtLSng=/)
 
 ### Design
-- **UI Prototype**: [View on Figma](https://www.figma.com/design/NtGTz39wO9AuzPtHgk5xdn/Untitled?t=hRX3Qs3nyoEYKstV-0)
+- **UI Prototype**: [View on Figma](https://www.figma.com/design/Qoguz5TvcrGjc6HLyvIZ1u/Untitled?node-id=1-30&p=f&t=N8In6nIobeRKSr7w-0)
 
 ### Database
 - **Supabase Dashboard**: [Access Database](https://supabase.com/dashboard/project/knxcqgoealvgfqcuffep)
